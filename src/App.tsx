@@ -17,56 +17,29 @@ import {
 // CẤU HÌNH DỮ LIỆU & TÙY CHỈNH NHANH (BẠN CHỈ CẦN SỬA NỘI DUNG Ở ĐÂY)
 // ============================================================================
 /*
-  HƯỚNG DẪN NHẬN DỮ LIỆU CÂU HỎI + ĐIỀU ƯỚC + 8 BỨC ẢNH PHOTOBOOTH LƯU THẲNG VÀO GOOGLE DRIVE:
-  1. Truy cập https://script.google.com/ -> Dự án mới (New Project)
-  2. Dán đoạn mã Google Apps Script bên dưới vào rồi bấm Triển khai (Deploy) -> Ứng dụng web (Web App)
-     -> Quyền truy cập: "Bất kỳ ai (Anyone)" -> Copy URL dán vào `appsScriptUrl` bên dưới:
-
-  function doPost(e) {
-    try {
-      var body = JSON.parse(e.postData.contents);
-      var folderName = "Birthday_Photobooth_And_Wishes";
-      var folders = DriveApp.getFoldersByName(folderName);
-      var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-
-      // Nếu là 8 bức ảnh từ Photobooth gửi về Drive
-      if (body.type === "PHOTOBOOTH_8_PHOTOS" && body.photos) {
-        var sessionFolder = folder.createFolder("Session_" + new Date().toISOString().replace(/[:.]/g, "-"));
-        body.photos.forEach(function(item, idx) {
-          var base64Data = item.dataUrl.split(",")[1];
-          var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), "image/png", "Photo_" + (idx + 1) + "_" + item.filterName + ".png");
-          sessionFolder.createFile(blob);
-        });
-        return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);
-      }
-
-      // Nếu là câu trả lời Thật hoặc Điều ước
-      var docName = "Birthday_Responses_Log";
-      var files = folder.getFilesByName(docName);
-      var doc = files.hasNext() ? DocumentApp.openById(files.next().getId()) : DocumentApp.create(docName);
-      if (!files.hasNext()) {
-        DriveApp.getFileById(doc.getId()).moveTo(folder);
-      }
-      doc.getBody().appendParagraph("[" + body.timestamp + "] " + body.type + "\n" + body.formattedText + "\n--------------------");
-      doc.saveAndClose();
-      return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);
-    } catch (err) {
-      return ContentService.createTextOutput(JSON.stringify({ error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
-    }
-  }
+  =============================================================================
+  📌 HƯỚNG DẪN THAY NHẠC NỀN (.MP3) VÀ 14 ẢNH TỪ MÁY TÍNH CÁ NHÂN CỦA BẠN:
+  =============================================================================
+  1. Trong thư mục gốc dự án của bạn (ngang hàng với thư mục `src`), có sẵn thư mục `public`.
+  2. Hãy copy file nhạc và 14 bức ảnh từ máy tính của bạn vào thư mục `public`:
+     - Ví dụ nhạc: bỏ vào `public/music/nhac-nen.mp3` -> Điền đường dẫn là `"/music/nhac-nen.mp3"`
+     - Ví dụ ảnh:  bỏ vào `public/photos/anh-1.jpg` ... `anh-14.jpg` -> Điền `"/photos/anh-1.jpg"`,...
 */
+
 const CONFIG = {
-  // 0. CẤU HÌNH ÂM NHẠC PIANO NỀN (Tự động phát ngay khi vào)
+  // 0. CẤU HÌNH ÂM NHẠC NỀN (Chỉ phát file nhạc của bạn)
   audioConfig: {
-    customMp3Url: "",
-    defaultVolume: 0.35,
+    // <--- [CHỖ THAY NHẠC NỀN TỪ MÁY CÁ NHÂN]:
+    // Bỏ file nhạc vào `public/music/nhac-nen.mp3` rồi sửa đường dẫn bên dưới:
+    customMp3Url: "/music/nhac-nen.mp3",
+    defaultVolume: 0.5,
   },
 
   // 1. CẤU HÌNH GỬI DỮ LIỆU & GỬI 8 ẢNH PHOTOBOOTH VỀ GOOGLE DRIVE
   submissionConfig: {
     mode: "APPS_SCRIPT",
     appsScriptUrl:
-      "https://script.google.com/macros/s/AKfycbxGY-FIWe9Peqq7UU_CgKI2ukDewAlqf9FuoPzSbRnEl8F9UYtgN7GJvoyC3hy8wFgDhw/exec",
+      "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec",
     googleFormActionUrl:
       "https://docs.google.com/forms/d/e/1FAIpQLSf_YOUR_FORM_ID_HERE/formResponse",
     googleFormEntries: {
@@ -147,9 +120,9 @@ const CONFIG = {
         correct: 1,
       },
       {
-        q: "Sắc xanh dương Pastel của bầu trời và đại dương mang lại cảm giác gì?",
+        q: "Sắc xanh dương Pastel của bầu trời và chiếc áo Scrubs bác sĩ mang lại cảm giác gì?",
         options: [
-          "Sự bình yên, tự do và niềm hy vọng dịu mát",
+          "Sự bình yên, tin cậy và niềm hy vọng dịu mát",
           "Sự nóng bức của sa mạc",
           "Sự ồn ào vội vã",
           "Cảm giác cay nồng",
@@ -187,12 +160,12 @@ const CONFIG = {
         correct: 1,
       },
       {
-        q: "Biểu tượng làn sóng biển êm dịu và bầu trời trong xanh gợi nhắc điều gì?",
+        q: "Dụng cụ quen thuộc nào luôn gắn liền với hình ảnh người Bác sĩ tận tâm?",
         options: [
-          "Sự bao dung, bình yên và khởi đầu tươi mới",
-          "Mùa đông lạnh giá",
-          "Sự vội vã",
-          "Cơn bão",
+          "Ống nghe y khoa (Stethoscope)",
+          "Chiếc xẻng làm vườn",
+          "Cây vợt cầu lông",
+          "Chiếc la bàn",
         ],
         correct: 0,
       },
@@ -301,32 +274,67 @@ const CONFIG = {
       "Sai tới 5 lần luôn rồi đó! Thôi không sao, hôm nay là ngày đặc biệt nên hệ thống xin phép 'cứu trợ' nhẹ nhàng. Đáp án chính xác là 25 nhé, tặng luôn chữ số cuối cùng nè!",
   },
 
-  // 7. Trang Chúc mừng 3D & Photobooth
+  // 7. Trang Chúc mừng 3D & Photobooth (14 BỨC ẢNH KỶ NIỆM BAY NGẪU NHIÊN LUÂN PHIÊN)
   celebration: {
+    // <--- [CHỖ THAY 14 ẢNH KỶ NIỆM TỪ MÁY CÁ NHÂN]:
+    // Tạo thư mục `public/photos` trong dự án, bỏ 14 bức ảnh vào đó (ví dụ: `anh-1.jpg` -> `anh-14.jpg`)
+    // Sau đó đổi các đường dẫn `url` bên dưới thành: `url: "/photos/anh-1.jpg"`,... `url: "/photos/anh-14.jpg"`
     balloonPhotos: [
       {
-        url: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=400&q=80",
+        url: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-1.jpg"
         caption: "Khởi đầu dịu dàng",
       },
       {
-        url: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=400&q=80",
+        url: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-2.jpg"
         caption: "Nụ cười tỏa nắng",
       },
       {
-        url: "https://images.unsplash.com/photo-1464349153735-7db50ed83c84?auto=format&fit=crop&w=400&q=80",
+        url: "https://images.unsplash.com/photo-1464349153735-7db50ed83c84?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-3.jpg"
         caption: "Tuổi mới bình yên",
       },
       {
-        url: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=400&q=80",
+        url: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-4.jpg"
         caption: "Khoảnh khắc đáng nhớ",
       },
       {
-        url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80",
+        url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-5.jpg"
         caption: "Biển trời mênh mông",
       },
       {
-        url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=400&q=80",
+        url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-6.jpg"
         caption: "Rạng rỡ như hoa",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-7.jpg"
+        caption: "Hạnh phúc ngập tràn",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-8.jpg"
+        caption: "Nắng ấm ban mai",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-9.jpg"
+        caption: "Bữa tiệc ngọt ngào",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-10.jpg"
+        caption: "Giai điệu thanh xuân",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-11.jpg"
+        caption: "Dịu dàng trong trẻo",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-12.jpg"
+        caption: "Ước mơ bay cao",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-13.jpg"
+        caption: "Ánh nhìn lấp lánh",
+      },
+      {
+        url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-14.jpg"
+        caption: "Mãi luôn rạng ngời",
       },
     ],
     letterTitle: "Gửi Người Đặc Biệt Trong Ngày Sinh Nhật",
@@ -334,7 +342,7 @@ const CONFIG = {
 
 Vậy là bạn đã kiên nhẫn vượt qua tất cả những thử thách nhỏ nhắn (và có chút tinh nghịch) để mở ra trang sách nhỏ này. Khoảnh khắc ngọn nến vừa được thổi tắt cũng là lúc một hành trình tuổi mới chính thức bắt đầu — nhẹ nhàng, trong trẻo như sắc xanh của bầu trời và đại dương.
 
-Cảm ơn bạn vì đã luôn mang đến một nguồn năng lượng thật ấm áp, dịu dàng cho thế giới xung quanh. Giữa nhịp sống đôi khi vội vã, mong rằng ở tuổi mới này, bạn sẽ luôn giữ được ánh mắt trong veo, nụ cười tự nhiên và một trái tim bình yên trước mọi thử thách.
+Cảm ơn bạn vì đã luôn mang đến một nguồn năng lượng thật ấm áp, dịu dàng và sự tận tâm chữa lành cho thế giới xung quanh. Giữa nhịp sống và những ca trực đôi khi vội vã, mong rằng ở tuổi mới này, bạn sẽ luôn giữ được ánh mắt trong veo, nụ cười tự nhiên và một trái tim bình yên trước mọi thử thách.
 
 Mọi điều ước bạn vừa gửi gắm vào ngọn nến lúc nãy, mình tin rằng bằng sự nỗ lực và vẻ đẹp tâm hồn của bạn, tất cả đều sẽ lần lượt nở hoa theo cách trọn vẹn nhất. Chúc bạn mỗi sớm mai thức dậy đều tìm thấy niềm vui trong những điều giản dị, có thật nhiều sức khỏe, được yêu thương thật nhiều và luôn tự hào về chính mình.
 
@@ -360,12 +368,7 @@ async function sendToGoogleOrWebhook(payload: {
   timestamp: string;
   data?: Array<{ question: string; answer: string }>;
   wish?: string;
-  photos?: Array<{
-    id: number;
-    dataUrl: string;
-    filterName: string;
-    badge: string;
-  }>;
+  photos?: Array<{ id: number; dataUrl: string; filterName: string }>;
 }) {
   const cfg = CONFIG.submissionConfig;
   let formattedText = "";
@@ -440,250 +443,74 @@ async function sendToGoogleOrWebhook(payload: {
 }
 
 // ============================================================================
-// BỘ PHÁT NHẠC PIANO NHẸ NHÀNG (TỰ ĐỘNG PHÁT NGAY KHI VÀO TRANG, NÚT ĐỂ TẮT/BẬT)
+// BỘ PHÁT NHẠC NỀN TỪ FILE AUDIO CÁ NHÂN (ĐÃ XÓA HOÀN TOÀN SYNTH PIANO MẶC ĐỊNH)
 // ============================================================================
-const NOTE_FREQ: Record<string, number> = {
-  C3: 130.81,
-  F3: 174.61,
-  G3: 196.0,
-  A3: 220.0,
-  Bb3: 233.08,
-  C4: 261.63,
-  D4: 293.66,
-  E4: 329.63,
-  F4: 349.23,
-  G4: 392.0,
-  A4: 440.0,
-  Bb4: 466.16,
-  C5: 523.25,
-  D5: 587.33,
-  E5: 659.25,
-  F5: 698.46,
-};
-
-const PIANO_SCORE = [
-  { notes: ["C4"], dur: 0.45 },
-  { notes: ["C4"], dur: 0.45 },
-  { notes: ["D4", "F3", "A3"], dur: 0.9 },
-  { notes: ["C4"], dur: 0.9 },
-  { notes: ["F4", "A3", "C4"], dur: 0.9 },
-  { notes: ["E4", "G3", "C4"], dur: 1.8 },
-
-  { notes: ["C4"], dur: 0.45 },
-  { notes: ["C4"], dur: 0.45 },
-  { notes: ["D4", "G3", "Bb3"], dur: 0.9 },
-  { notes: ["C4"], dur: 0.9 },
-  { notes: ["G4", "Bb3", "E4"], dur: 0.9 },
-  { notes: ["F4", "F3", "A3", "C4"], dur: 1.8 },
-
-  { notes: ["C4"], dur: 0.45 },
-  { notes: ["C4"], dur: 0.45 },
-  { notes: ["C5", "F3", "A3", "F4"], dur: 0.9 },
-  { notes: ["A4", "C4"], dur: 0.9 },
-  { notes: ["F4", "Bb3", "D4"], dur: 0.9 },
-  { notes: ["E4", "A3", "C4"], dur: 0.9 },
-  { notes: ["D4", "G3", "Bb3"], dur: 1.5 },
-
-  { notes: ["Bb4"], dur: 0.45 },
-  { notes: ["Bb4"], dur: 0.45 },
-  { notes: ["A4", "F3", "C4"], dur: 0.9 },
-  { notes: ["F4", "A3"], dur: 0.9 },
-  { notes: ["G4", "G3", "C4", "E4"], dur: 0.9 },
-  { notes: ["F4", "F3", "A3", "C4"], dur: 2.2 },
-
-  { notes: ["A4", "F3", "C4"], dur: 0.9 },
-  { notes: ["G4", "C4", "E4"], dur: 0.9 },
-  { notes: ["F4", "A3", "C4"], dur: 1.6 },
-];
-
-function GentlePianoPlayer() {
+function BackgroundMusicPlayer() {
   const [isMutedByUser, setIsMutedByUser] = useState(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const htmlAudioRef = useRef<HTMLAudioElement | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stepIndexRef = useRef(0);
-  const isRunningLoopRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMutedRef = useRef(false);
 
-  const playPianoChord = useCallback(
-    (ctx: AudioContext, noteNames: string[], durationSec: number) => {
-      if (isMutedRef.current || ctx.state !== "running") return;
-      const now = ctx.currentTime;
-      const masterVolume = CONFIG.audioConfig.defaultVolume || 0.35;
-
-      noteNames.forEach((noteName, idx) => {
-        const freq = NOTE_FREQ[noteName];
-        if (!freq) return;
-
-        const filter = ctx.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(freq * 3.2, now);
-        filter.frequency.exponentialRampToValueAtTime(
-          freq * 1.1,
-          now + durationSec * 1.3,
-        );
-
-        const gainNode = ctx.createGain();
-        const noteGain = (idx === 0 ? 0.22 : 0.1) * masterVolume;
-
-        gainNode.gain.setValueAtTime(0.0001, now);
-        gainNode.gain.linearRampToValueAtTime(noteGain, now + 0.035);
-        gainNode.gain.exponentialRampToValueAtTime(
-          noteGain * 0.35,
-          now + durationSec * 0.55,
-        );
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.0001,
-          now + durationSec * 1.65,
-        );
-
-        const oscMain = ctx.createOscillator();
-        oscMain.type = "triangle";
-        oscMain.frequency.setValueAtTime(freq, now);
-
-        const oscHarmonic = ctx.createOscillator();
-        oscHarmonic.type = "sine";
-        oscHarmonic.frequency.setValueAtTime(freq * 2, now);
-
-        const harmonicGain = ctx.createGain();
-        harmonicGain.gain.setValueAtTime(noteGain * 0.18, now);
-        harmonicGain.gain.exponentialRampToValueAtTime(
-          0.0001,
-          now + durationSec * 0.7,
-        );
-
-        oscMain.connect(filter);
-        oscHarmonic.connect(harmonicGain);
-        harmonicGain.connect(filter);
-
-        filter.connect(gainNode);
-        gainNode.connect(ctx.destination);
-
-        oscMain.start(now);
-        oscHarmonic.start(now);
-        oscMain.stop(now + durationSec * 1.7);
-        oscHarmonic.stop(now + durationSec * 1.7);
-      });
-    },
-    [],
-  );
-
-  const scheduleNextStep = useCallback(
-    function runStep() {
-      if (!isRunningLoopRef.current || isMutedRef.current) return;
-      const ctx = audioCtxRef.current;
-      if (ctx && ctx.state === "running") {
-        const currentItem = PIANO_SCORE[stepIndexRef.current];
-        playPianoChord(ctx, currentItem.notes, currentItem.dur);
-        stepIndexRef.current = (stepIndexRef.current + 1) % PIANO_SCORE.length;
-        timerRef.current = setTimeout(runStep, currentItem.dur * 1000);
-      } else {
-        timerRef.current = setTimeout(runStep, 400);
-      }
-    },
-    [playPianoChord],
-  );
-
-  const startMusicEngine = useCallback(async () => {
+  const tryPlayCustomAudio = useCallback(() => {
     if (isMutedRef.current) return;
+    const url = CONFIG.audioConfig.customMp3Url;
+    if (!url) return;
 
-    if (CONFIG.audioConfig.customMp3Url) {
-      if (!htmlAudioRef.current) {
-        htmlAudioRef.current = new Audio(CONFIG.audioConfig.customMp3Url);
-        htmlAudioRef.current.loop = true;
-        htmlAudioRef.current.volume = CONFIG.audioConfig.defaultVolume || 0.35;
-      }
-      try {
-        await htmlAudioRef.current.play();
-        isRunningLoopRef.current = true;
-        return;
-      } catch {
-        // Fallback to Web Audio API synth
-      }
+    if (!audioRef.current) {
+      const audio = new Audio(url);
+      audio.loop = true;
+      audio.volume = CONFIG.audioConfig.defaultVolume ?? 0.5;
+      audioRef.current = audio;
     }
 
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtx) return;
+    if (audioRef.current.paused) {
+      audioRef.current.play().catch(() => {
+        // Trình duyệt chờ tương tác đầu tiên để phát nhạc
+      });
+    }
+  }, []);
 
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioCtx();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      try {
-        await audioCtxRef.current.resume();
-      } catch {
-        // Browser may require user gesture before resuming
-      }
-    }
-
-    if (!isRunningLoopRef.current) {
-      isRunningLoopRef.current = true;
-      scheduleNextStep();
-    }
-  }, [scheduleNextStep]);
-
-  const stopMusicEngine = useCallback(() => {
-    isRunningLoopRef.current = false;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    if (htmlAudioRef.current) {
-      htmlAudioRef.current.pause();
+  const stopCustomAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
     }
   }, []);
 
   useEffect(() => {
-    startMusicEngine();
+    tryPlayCustomAudio();
 
-    const unlockAudioOnAnyGesture = () => {
+    const unlockOnGesture = () => {
       if (!isMutedRef.current) {
-        if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
-          audioCtxRef.current.resume().catch(() => {
-            // Ignore resume error
-          });
-        }
-        if (!isRunningLoopRef.current) {
-          startMusicEngine();
-        }
+        tryPlayCustomAudio();
       }
     };
 
-    window.addEventListener("pointerdown", unlockAudioOnAnyGesture);
-    window.addEventListener("keydown", unlockAudioOnAnyGesture);
-    window.addEventListener("mousemove", unlockAudioOnAnyGesture, {
-      once: true,
-    });
-    window.addEventListener("touchstart", unlockAudioOnAnyGesture, {
-      once: true,
-    });
+    window.addEventListener("pointerdown", unlockOnGesture);
+    window.addEventListener("keydown", unlockOnGesture);
+    window.addEventListener("touchstart", unlockOnGesture, { once: true });
 
     return () => {
-      window.removeEventListener("pointerdown", unlockAudioOnAnyGesture);
-      window.removeEventListener("keydown", unlockAudioOnAnyGesture);
-      window.removeEventListener("mousemove", unlockAudioOnAnyGesture);
-      window.removeEventListener("touchstart", unlockAudioOnAnyGesture);
-      stopMusicEngine();
+      window.removeEventListener("pointerdown", unlockOnGesture);
+      window.removeEventListener("keydown", unlockOnGesture);
+      window.removeEventListener("touchstart", unlockOnGesture);
+      stopCustomAudio();
     };
-  }, [startMusicEngine, stopMusicEngine]);
+  }, [tryPlayCustomAudio, stopCustomAudio]);
 
   const handleToggleButton = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isMutedByUser) {
       isMutedRef.current = true;
       setIsMutedByUser(true);
-      stopMusicEngine();
+      stopCustomAudio();
     } else {
       isMutedRef.current = false;
       setIsMutedByUser(false);
-      startMusicEngine();
+      tryPlayCustomAudio();
     }
   };
 
-  const activeSound = !isMutedByUser;
+  const activeSound =
+    !isMutedByUser && Boolean(CONFIG.audioConfig.customMp3Url);
 
   return (
     <button
@@ -693,13 +520,13 @@ function GentlePianoPlayer() {
       className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#FAF8F2]/95 hover:bg-white border border-[#C5D8E6] shadow-[0_8px_25px_rgba(44,68,90,0.14)] text-[#283E52] text-xs font-medium transition-all cursor-pointer group"
     >
       <span className="relative flex items-center justify-center w-6 h-6 rounded-full bg-[#E6F0F7] text-[#4A7896]">
-        {activeSound ? "🎹" : "🔇"}
+        {activeSound ? "🎵" : "🔇"}
         {activeSound && (
           <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#5B89A6] animate-ping" />
         )}
       </span>
       <span className="hidden sm:inline font-medium">
-        {activeSound ? "Tắt nhạc Piano" : "Bật nhạc Piano"}
+        {activeSound ? "Tắt nhạc nền" : "Bật nhạc nền"}
       </span>
       {activeSound && (
         <span className="flex items-end gap-0.5 h-3 ml-0.5">
@@ -1562,7 +1389,6 @@ function GameBoard({
   const [isSendingTruth, setIsSendingTruth] = useState(false);
   const [truthError, setTruthError] = useState("");
 
-  // Khởi tạo trực tiếp mảng câu hỏi đã xáo trộn trong useState (Không cần gọi setState trong useEffect)
   const [g3Questions, setG3Questions] = useState(() =>
     createShuffledGame3Questions(),
   );
@@ -2245,69 +2071,121 @@ function GameBoard({
 }
 
 // ============================================================================
-// COMPONENT 3A: BÓNG BAY KÈM KHUNG ẢNH LƯỚT TỪ DƯỚI LÊN (PASTEL XANH DƯƠNG - KEM)
+// COMPONENT 3A: 14 BỨC ẢNH BÓNG BAY XUẤT HIỆN NGẪU NHIÊN LUÂN PHIÊN NHAU
 // ============================================================================
+const BALLOON_COLORS = [
+  "#93BCD6",
+  "#D6E6F2",
+  "#E8DFCA",
+  "#B3D1E6",
+  "#CFE2EE",
+  "#EFE7D6",
+  "#F5DCE4",
+  "#CBE8DF",
+];
+
+interface FloatingSlot {
+  slotId: number;
+  photoIndex: number;
+  leftPercent: number;
+  durationSec: number;
+  delaySec: number;
+  color: string;
+  tiltDeg: number;
+}
+
+function createInitialBalloonSlots(): FloatingSlot[] {
+  const photosCount = CONFIG.celebration.balloonPhotos.length; // 14 ảnh
+  const baseLanes = [4, 13, 22, 32, 41, 51, 60, 70, 79, 88];
+  return baseLanes.map((baseLeft, idx) => ({
+    slotId: idx,
+    photoIndex: idx % photosCount,
+    leftPercent: baseLeft + ((idx * 3) % 5) - 2,
+    durationSec: 18 + (idx % 5) * 2.5,
+    delaySec: idx * 1.9,
+    color: BALLOON_COLORS[idx % BALLOON_COLORS.length],
+    tiltDeg: idx % 2 === 0 ? -2.2 : 2.2,
+  }));
+}
+
 function BalloonsBackground() {
-  const balloonItems = useMemo(() => {
-    const colors = [
-      "#93BCD6",
-      "#D6E6F2",
-      "#E8DFCA",
-      "#B3D1E6",
-      "#CFE2EE",
-      "#EFE7D6",
-    ];
-    return CONFIG.celebration.balloonPhotos.map((photo, index) => ({
-      ...photo,
-      id: index,
-      color: colors[index % colors.length],
-      left: `${6 + index * 15}%`,
-      duration: `${20 + (index % 3) * 4}s`,
-      delay: `${index * 2.2}s`,
-    }));
+  const [slots, setSlots] = useState<FloatingSlot[]>(() =>
+    createInitialBalloonSlots(),
+  );
+
+  const handleCycleIteration = useCallback((slotId: number) => {
+    const photosCount = CONFIG.celebration.balloonPhotos.length;
+    setSlots((prev) =>
+      prev.map((slot) => {
+        if (slot.slotId !== slotId) return slot;
+        const randomStep = 1 + Math.floor(Math.random() * (photosCount - 1));
+        const nextPhotoIdx = (slot.photoIndex + randomStep) % photosCount;
+        const nextLeft = Math.floor(3 + Math.random() * 85);
+        const nextColor =
+          BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+        const nextTilt = (Math.random() - 0.5) * 6;
+        return {
+          ...slot,
+          photoIndex: nextPhotoIdx,
+          leftPercent: nextLeft,
+          color: nextColor,
+          tiltDeg: nextTilt,
+        };
+      }),
+    );
   }, []);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {balloonItems.map((item) => (
-        <div
-          key={item.id}
-          style={{
-            left: item.left,
-            animationDuration: item.duration,
-            animationDelay: item.delay,
-          }}
-          className="balloon-float absolute -bottom-72 flex flex-col items-center opacity-90"
-        >
+      {slots.map((slot) => {
+        const photo =
+          CONFIG.celebration.balloonPhotos[
+            slot.photoIndex % CONFIG.celebration.balloonPhotos.length
+          ];
+        return (
           <div
-            style={{ backgroundColor: item.color }}
-            className="w-16 h-20 rounded-[50%_50%_48%_48%/55%_55%_45%_45%] shadow-[inset_-6px_-6px_14px_rgba(0,0,0,0.06)] relative flex items-center justify-center border border-white/50"
+            key={slot.slotId}
+            onAnimationIteration={() => handleCycleIteration(slot.slotId)}
+            style={{
+              left: `${slot.leftPercent}%`,
+              animationDuration: `${slot.durationSec}s`,
+              animationDelay: `${slot.delaySec}s`,
+            }}
+            className="balloon-float absolute -bottom-72 flex flex-col items-center opacity-90 transition-[left] duration-700"
           >
-            <div className="w-3 h-6 bg-white/45 rounded-full absolute top-3 left-3 rotate-[-25deg]" />
             <div
-              style={{ backgroundColor: item.color }}
-              className="w-2.5 h-2 absolute -bottom-1 rotate-45"
-            />
-          </div>
-
-          <div className="w-[1px] h-10 bg-[#95AFC2]/70" />
-
-          <div className="bg-[#FAF8F2] p-2 pb-3 rounded-xl shadow-[0_10px_25px_rgba(40,62,82,0.1)] border border-[#D8E5EE] w-28 transform -rotate-2">
-            <div className="w-8 h-2.5 bg-[#CFE2EE]/80 mx-auto -mt-3 mb-1 rounded-sm transform rotate-3" />
-            <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#EAF1F6]">
-              <img
-                src={item.url}
-                alt={item.caption}
-                className="w-full h-full object-cover"
-                loading="lazy"
+              style={{ backgroundColor: slot.color }}
+              className="w-16 h-20 rounded-[50%_50%_48%_48%/55%_55%_45%_45%] shadow-[inset_-6px_-6px_14px_rgba(0,0,0,0.06)] relative flex items-center justify-center border border-white/50"
+            >
+              <div className="w-3 h-6 bg-white/45 rounded-full absolute top-3 left-3 rotate-[-25deg]" />
+              <div
+                style={{ backgroundColor: slot.color }}
+                className="w-2.5 h-2 absolute -bottom-1 rotate-45"
               />
             </div>
-            <p className="text-[10px] text-center text-[#466075] mt-1.5 font-medium truncate">
-              {item.caption}
-            </p>
+
+            <div className="w-[1px] h-10 bg-[#95AFC2]/70" />
+
+            <div
+              style={{ transform: `rotate(${slot.tiltDeg}deg)` }}
+              className="bg-[#FAF8F2] p-2 pb-3 rounded-xl shadow-[0_10px_25px_rgba(40,62,82,0.1)] border border-[#D8E5EE] w-28"
+            >
+              <div className="w-8 h-2.5 bg-[#CFE2EE]/80 mx-auto -mt-3 mb-1 rounded-sm transform rotate-3" />
+              <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#EAF1F6]">
+                <img
+                  src={photo.url}
+                  alt={photo.caption}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <p className="text-[10px] text-center text-[#466075] mt-1.5 font-medium truncate">
+                {photo.caption}
+              </p>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -2664,108 +2542,120 @@ function BookLetterModal({
 }
 
 // ============================================================================
-// COMPONENT 4: TRANG TIỆM PHOTOBOOTH SINH NHẬT (KHUNG PURIKURA SIÊU CẦU KỲ + ĐỒ HỌA RỰC RỠ)
+// COMPONENT 4: TRANG TIỆM PHOTOBOOTH SINH NHẬT
+// - ĐÃ XÓA HOÀN TOÀN VÙNG CẮT ELIP QUANH MẶT, LÀM MỊN DA ĐỒNG NHẤT TOÀN KHUNG
+// - NHẬN DIỆN KHUÔN MẶT 3D 6DoF CHUẨN TIKTOK/INSTAGRAM
 // ============================================================================
+export interface TrackedFacePose {
+  detected: boolean;
+  foreheadX: number;
+  foreheadY: number;
+  eyeCenterX: number;
+  eyeCenterY: number;
+  leftCheekX: number;
+  leftCheekY: number;
+  rightCheekX: number;
+  rightCheekY: number;
+  chinX: number;
+  chinY: number;
+  rollAngle: number;
+  yawRatio: number;
+  pitchRatio: number;
+  faceScale: number;
+}
+
 const PHOTOBOOTH_FILTERS = [
   {
-    id: "royal_crown_party",
-    name: "1. Vương Miện Hoàng Gia & Gấu Teddy",
-    badge: "👑 Hoàng Gia & Gấu",
-    cssFilter: "brightness(1.08) contrast(0.96) saturate(1.08)",
-    tint: "rgba(255, 248, 238, 0.11)",
+    id: "style_1",
+    icon: "🩺👑",
+    cssFilter: "brightness(1.07) contrast(0.97) saturate(1.06)",
+    tint: "rgba(255, 250, 245, 0.08)",
     framePrimary: "#FCE8EE",
     frameSecondary: "#CFE6F7",
     accentColor: "#D4A359",
-    patternType: "STRIPES",
-    stickerText: " Princess Day! ✨",
+    patternType: "COQUETTE_PEARL",
+    stickerText: "Dr. Princess ✨",
   },
   {
-    id: "ocean_carnival_hat",
-    name: "2. Nón Tiệc Đại Dương & Mèo Tiệc Tùng",
-    badge: "🎉 Nón Tiệc & Mèo",
-    cssFilter: "brightness(1.1) contrast(0.95) saturate(1.06)",
-    tint: "rgba(205, 232, 250, 0.13)",
-    framePrimary: "#D2ECFA",
-    frameSecondary: "#FFF2CC",
+    id: "style_2",
+    icon: "👩‍⚕️💊",
+    cssFilter: "brightness(1.09) contrast(0.96) saturate(1.05)",
+    tint: "rgba(220, 240, 255, 0.09)",
+    framePrimary: "#D6EEFC",
+    frameSecondary: "#FFF5D6",
     accentColor: "#4A88B0",
-    patternType: "DOTS",
-    stickerText: "Party Time! 🎈",
+    patternType: "MEDICAL_CHART",
+    stickerText: "Happy Doctor 🩺",
   },
   {
-    id: "sweet_bunny_lace",
-    name: "3. Tai Thỏ Bông Kem & Tiệc Bánh Dâu",
-    badge: "🐰 Tai Thỏ & Bánh Dâu",
-    cssFilter: "brightness(1.11) contrast(0.94) saturate(1.05)",
-    tint: "rgba(255, 236, 242, 0.14)",
-    framePrimary: "#FFD9E6",
-    frameSecondary: "#FFF9F2",
+    id: "style_3",
+    icon: "🐰🩹",
+    cssFilter: "brightness(1.1) contrast(0.95) saturate(1.05)",
+    tint: "rgba(255, 242, 246, 0.09)",
+    framePrimary: "#FFDCE8",
+    frameSecondary: "#FFFDF9",
     accentColor: "#E07A9B",
-    patternType: "GINGHAM",
-    stickerText: "So Sweet! 🍓",
+    patternType: "GINGHAM_LACE",
+    stickerText: "Rx: 100% Joy 🍓",
   },
   {
-    id: "tea_party_glasses",
-    name: "4. Kính Ngọc Trai & Tiệc Trà Macaron",
-    badge: "👓 Kính & Macaron",
-    cssFilter: "brightness(1.07) contrast(0.97) sepia(0.08) saturate(1.06)",
-    tint: "rgba(250, 240, 220, 0.13)",
-    framePrimary: "#F9E6C8",
-    frameSecondary: "#DDF0E6",
-    accentColor: "#C58F4E",
-    patternType: "STRIPES",
-    stickerText: "Tea Party ☕",
+    id: "style_4",
+    icon: "👓💉",
+    cssFilter: "brightness(1.07) contrast(0.97) sepia(0.04) saturate(1.06)",
+    tint: "rgba(250, 244, 232, 0.08)",
+    framePrimary: "#F7E8D0",
+    frameSecondary: "#E0F2EA",
+    accentColor: "#C28B48",
+    patternType: "Y2K_WINDOW",
+    stickerText: "Sweet Care 💝",
   },
   {
-    id: "starlight_tiara",
-    name: "5. Hào Quang Ánh Sao & Thỏ Cung Trăng",
-    badge: "✨ Sao Đêm & Trăng",
-    cssFilter: "brightness(1.09) contrast(0.96) saturate(1.1)",
-    tint: "rgba(215, 230, 252, 0.14)",
-    framePrimary: "#D7E3FC",
-    frameSecondary: "#F3DDF7",
+    id: "style_5",
+    icon: "✨🏥",
+    cssFilter: "brightness(1.08) contrast(0.96) saturate(1.08)",
+    tint: "rgba(225, 236, 255, 0.09)",
+    framePrimary: "#D8E4FC",
+    frameSecondary: "#F4E0F8",
     accentColor: "#6384B8",
-    patternType: "DOTS",
-    stickerText: "Make a Wish 🌙",
+    patternType: "STAR_AURA",
+    stickerText: "Super Doctor 🌙",
   },
   {
-    id: "daisy_flora_wreath",
-    name: "6. Vòng Hoa Cúc Họa Mi & Cún Poodle",
-    badge: "🌼 Hoa Cúc & Cún",
-    cssFilter: "brightness(1.1) contrast(0.95) saturate(1.07)",
-    tint: "rgba(250, 248, 232, 0.12)",
+    id: "style_6",
+    icon: "🌼🩺",
+    cssFilter: "brightness(1.09) contrast(0.96) saturate(1.06)",
+    tint: "rgba(250, 252, 240, 0.08)",
     framePrimary: "#E2F4DC",
-    frameSecondary: "#FFF5C8",
+    frameSecondary: "#FFF6CF",
     accentColor: "#6DA862",
-    patternType: "GINGHAM",
-    stickerText: "Bloom & Smile 🌼",
+    patternType: "BOTANICAL_DIARY",
+    stickerText: "Best Doctor 🌼",
   },
   {
-    id: "coquette_double_bows",
-    name: "7. Đôi Nơ Lụa Coquette & Vịt Vàng Cute",
-    badge: "🎀 Đôi Nơ & Vịt Cute",
-    cssFilter: "brightness(1.11) contrast(0.94) saturate(1.06)",
-    tint: "rgba(222, 240, 252, 0.14)",
+    id: "style_7",
+    icon: "🎀🌡️",
+    cssFilter: "brightness(1.1) contrast(0.95) saturate(1.05)",
+    tint: "rgba(230, 244, 255, 0.09)",
     framePrimary: "#D8EEFC",
     frameSecondary: "#FDE2EC",
     accentColor: "#5D97BD",
-    patternType: "STRIPES",
-    stickerText: "Happy B-Day 🎀",
+    patternType: "CANDY_STRIPE",
+    stickerText: "Love & Heal 🎀",
   },
   {
-    id: "sunset_pearl_mermaid",
-    name: "8. Ngọc Trai Tiên Cá & Kẹo Mút Cầu Vồng",
-    badge: "🐚 Ngọc Trai & Kẹo",
-    cssFilter: "brightness(1.08) contrast(0.97) sepia(0.05) saturate(1.12)",
-    tint: "rgba(255, 232, 212, 0.13)",
-    framePrimary: "#FFE0D2",
+    id: "style_8",
+    icon: "🐚💖",
+    cssFilter: "brightness(1.08) contrast(0.97) sepia(0.03) saturate(1.1)",
+    tint: "rgba(255, 240, 228, 0.09)",
+    framePrimary: "#FFE2D4",
     frameSecondary: "#D6F0F7",
     accentColor: "#D97F64",
-    patternType: "DOTS",
-    stickerText: "Shining You 🐚",
+    patternType: "POLAROID_STAMP",
+    stickerText: "Shining Doc 🐚",
   },
 ];
 
-// --- BỘ HÀM VẼ ĐỒ HỌA NHÂN VẬT CHIBI, BÁNH KẸO & HOẠ TIẾT KHUNG PURIKURA CẦU KỲ ---
+// --- BỘ HÀM VẼ ĐỒ HỌA CHỦ ĐỀ BÁC SĨ DỄ THƯƠNG + NHÂN VẬT CHIBI & TIỆC SINH NHẬT ---
 
 function drawCornerSatinBow(
   ctx: CanvasRenderingContext2D,
@@ -2816,7 +2706,7 @@ function drawCornerSatinBow(
   ctx.restore();
 }
 
-function drawCuteTeddyBear(
+function drawDoctorTeddyBear(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -2845,15 +2735,27 @@ function drawCuteTeddyBear(
   });
 
   ctx.beginPath();
-  ctx.ellipse(0, 26, 20, 16, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "#D6A87E";
+  ctx.ellipse(0, 26, 21, 17, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFFFFF";
   ctx.fill();
+  ctx.strokeStyle = "#95B3C9";
+  ctx.lineWidth = 2;
   ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-7, 14);
+  ctx.lineTo(0, 25);
+  ctx.lineTo(7, 14);
+  ctx.closePath();
+  ctx.fillStyle = "#79B4D9";
+  ctx.fill();
 
   ctx.beginPath();
   ctx.arc(0, 0, 25, 0, Math.PI * 2);
   ctx.fillStyle = "#D6A87E";
   ctx.fill();
+  ctx.strokeStyle = "#7D5432";
+  ctx.lineWidth = 2;
   ctx.stroke();
 
   ctx.beginPath();
@@ -2878,38 +2780,34 @@ function drawCuteTeddyBear(
   ctx.fillStyle = "#5D4037";
   ctx.fill();
 
-  ctx.fillStyle = "rgba(244, 130, 150, 0.6)";
+  ctx.strokeStyle = "#487594";
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.ellipse(-14, 3, 5, 3, 0, 0, Math.PI * 2);
-  ctx.ellipse(14, 3, 5, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#F28B9F";
-  ctx.beginPath();
-  ctx.ellipse(-7, 17, 7, 4, -0.2, 0, Math.PI * 2);
-  ctx.ellipse(7, 17, 7, 4, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(-12, -22);
-  ctx.lineTo(0, -46);
-  ctx.lineTo(12, -22);
-  ctx.closePath();
-  ctx.fillStyle = "#79B4D9";
-  ctx.fill();
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = 2;
+  ctx.arc(0, 20, 12, 0.2, Math.PI - 0.2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(0, -48, 5, 0, Math.PI * 2);
+  ctx.arc(9, 28, 4.5, 0, Math.PI * 2);
   ctx.fillStyle = "#FFE066";
   ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.roundRect(-14, -33, 28, 13, 5);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+  ctx.strokeStyle = "#79B4D9";
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.fillStyle = "#FF6B8B";
+  ctx.fillRect(-2, -31, 4, 9);
+  ctx.fillRect(-4.5, -28.5, 9, 4);
 
   ctx.restore();
 }
 
-function drawCuteBunnyCharacter(
+function drawCuteBunnyDoctor(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -2949,6 +2847,17 @@ function drawCuteBunnyCharacter(
   ctx.strokeStyle = "#CFA8B4";
   ctx.stroke();
 
+  ctx.fillStyle = "#FFFDF9";
+  ctx.strokeStyle = "#F28B9F";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.roundRect(-11, -25, 22, 10, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#FF6B8B";
+  ctx.fillRect(-1.5, -23, 3, 6);
+  ctx.fillRect(-3, -21.5, 6, 3);
+
   ctx.fillStyle = "#3A2E2B";
   ctx.beginPath();
   ctx.arc(-8, -1, 3, 0, Math.PI * 2);
@@ -2966,12 +2875,6 @@ function drawCuteBunnyCharacter(
   ctx.arc(0, 3, 2.6, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "rgba(247, 150, 172, 0.65)";
-  ctx.beginPath();
-  ctx.ellipse(-13, 4, 5, 2.8, 0, 0, Math.PI * 2);
-  ctx.ellipse(13, 4, 5, 2.8, 0, 0, Math.PI * 2);
-  ctx.fill();
-
   ctx.fillStyle = "#FF7597";
   ctx.beginPath();
   ctx.arc(-5, 18, 6, 0, Math.PI * 2);
@@ -2984,7 +2887,7 @@ function drawCuteBunnyCharacter(
   ctx.restore();
 }
 
-function drawCuteKittyCharacter(
+function drawCuteKittyDoctor(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -3019,6 +2922,20 @@ function drawCuteKittyCharacter(
   ctx.fill();
   ctx.stroke();
 
+  ctx.strokeStyle = "#487594";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, 21, Math.PI * 1.15, Math.PI * 1.85);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, -18, 7.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#CFE6F7";
+  ctx.fill();
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
   ctx.fillStyle = "#2C3E50";
   ctx.beginPath();
   ctx.arc(-8, -1, 2.8, 0, Math.PI * 2);
@@ -3040,21 +2957,6 @@ function drawCuteKittyCharacter(
   ctx.beginPath();
   ctx.arc(0, 3, 2.5, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.fillStyle = "#FFD166";
-  ctx.strokeStyle = "#C9972C";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(-10, -18);
-  ctx.lineTo(-8, -29);
-  ctx.lineTo(-3, -22);
-  ctx.lineTo(0, -31);
-  ctx.lineTo(3, -22);
-  ctx.lineTo(8, -29);
-  ctx.lineTo(10, -18);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
 
   ctx.restore();
 }
@@ -3099,90 +3001,239 @@ function drawCutePoodlePuppy(
   ctx.arc(0, 4, 3.2, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "rgba(244, 145, 165, 0.55)";
-  ctx.beginPath();
-  ctx.ellipse(-13, 4, 4.5, 2.5, 0, 0, Math.PI * 2);
-  ctx.ellipse(13, 4, 4.5, 2.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
   ctx.restore();
 }
 
-function drawSwirlLollipop(
+function drawHeartStethoscopeIcon(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
+  color = "#5B89A6",
   scale = 1,
 ) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
 
-  ctx.fillStyle = "#FFFFFF";
-  ctx.strokeStyle = "#D0C4B4";
-  ctx.lineWidth = 1.5;
-  ctx.fillRect(-2.5, 10, 5, 26);
-  ctx.strokeRect(-2.5, 10, 5, 26);
+  ctx.strokeStyle = "#8CA6B8";
+  ctx.lineWidth = 2.8;
+  ctx.beginPath();
+  ctx.arc(-7, -14, 6, Math.PI * 0.8, Math.PI * 1.9);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(7, -14, 6, Math.PI * 1.1, Math.PI * 2.2);
+  ctx.stroke();
 
-  const rings: Array<[number, string]> = [
-    [16, "#FFACC7"],
-    [12.5, "#FFF6D6"],
-    [9, "#98CEF0"],
-    [5.5, "#FFFFFF"],
-  ];
-  rings.forEach(([r, c]) => {
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = c;
-    ctx.fill();
-  });
-  ctx.strokeStyle = "#E0809E";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(-12, -11);
+  ctx.bezierCurveTo(-22, 4, -8, 18, 0, 24);
+  ctx.bezierCurveTo(8, 18, 22, 4, 12, -11);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(14, 14, 7.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFFDF9";
+  ctx.fill();
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+
+  ctx.fillStyle = "#FF7597";
+  ctx.beginPath();
+  ctx.arc(14, 14, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawCuteCapsulePill(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rot = -0.35,
+  colorA = "#FF9EBB",
+  colorB = "#FFFDF9",
+  scale = 1,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = colorA;
+  ctx.beginPath();
+  ctx.roundRect(-9, -18, 18, 19, [9, 9, 0, 0]);
+  ctx.fill();
+
+  ctx.fillStyle = colorB;
+  ctx.beginPath();
+  ctx.roundRect(-9, 0, 18, 18, [0, 0, 9, 9]);
+  ctx.fill();
+
+  ctx.strokeStyle = "#5B89A6";
   ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.arc(0, 0, 16, 0, Math.PI * 2);
+  ctx.roundRect(-9, -18, 18, 36, 9);
   ctx.stroke();
 
-  ctx.fillStyle = "#79B4D9";
+  ctx.fillStyle = "#283E52";
   ctx.beginPath();
-  ctx.ellipse(-6, 16, 6, 3.5, -0.3, 0, Math.PI * 2);
-  ctx.ellipse(6, 16, 6, 3.5, 0.3, 0, Math.PI * 2);
+  ctx.arc(-3.5, 5, 1.3, 0, Math.PI * 2);
+  ctx.arc(3.5, 5, 1.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0, 7, 2, 0, Math.PI);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawCuteBandAid(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rot = 0.4,
+  scale = 1,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "#FCD5CE";
+  ctx.strokeStyle = "#E8998D";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.roundRect(-20, -8, 40, 16, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#FFFDF9";
+  ctx.fillRect(-7, -7, 14, 14);
+
+  ctx.fillStyle = "#FF6B8B";
+  ctx.beginPath();
+  ctx.arc(-2, -1, 2.5, 0, Math.PI * 2);
+  ctx.arc(2, -1, 2.5, 0, Math.PI * 2);
+  ctx.moveTo(-4.2, 0);
+  ctx.lineTo(0, 4.5);
+  ctx.lineTo(4.2, 0);
   ctx.fill();
 
   ctx.restore();
 }
 
-function drawPastelMacaron(
+function drawCuteSyringeIcon(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  topColor = "#F9B8C8",
-  creamColor = "#FFFDF7",
+  rot = -0.5,
+  scale = 1,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.strokeStyle = "#5B89A6";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.roundRect(-7, -16, 14, 30, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#FF9EBB";
+  ctx.fillRect(-5, -4, 10, 16);
+
+  ctx.strokeStyle = "#5B89A6";
+  ctx.lineWidth = 1.2;
+  [-10, -4, 2, 8].forEach((ly) => {
+    ctx.beginPath();
+    ctx.moveTo(-7, ly);
+    ctx.lineTo(-2, ly);
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = "#98CEF0";
+  ctx.fillRect(-2.5, -26, 5, 10);
+  ctx.fillRect(-8, -28, 16, 3.5);
+
+  ctx.beginPath();
+  ctx.moveTo(0, 14);
+  ctx.lineTo(0, 23);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawMedicalClipboardIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
   scale = 1,
 ) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
 
-  ctx.fillStyle = topColor;
-  ctx.strokeStyle = "#D48A9E";
-  ctx.lineWidth = 1.5;
-
+  ctx.fillStyle = "#E6BA95";
+  ctx.strokeStyle = "#B0825E";
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.ellipse(0, 5, 16, 7, 0, 0, Math.PI * 2);
+  ctx.roundRect(-18, -22, 36, 44, 5);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = creamColor;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(-14, -16, 28, 34);
+
+  ctx.fillStyle = "#95B3C9";
   ctx.beginPath();
-  ctx.roundRect(-17, -2, 34, 6, 3);
+  ctx.roundRect(-8, -25, 16, 6, 2);
   ctx.fill();
 
-  ctx.fillStyle = topColor;
+  ctx.fillStyle = "#FF6B8B";
+  ctx.fillRect(-9, -12, 6, 2);
+  ctx.fillRect(-7, -14, 2, 6);
+
+  ctx.fillStyle = "#487594";
+  ctx.font = "bold 8px sans-serif";
+  ctx.fillText("Rx: 100%", -2, -7);
+  ctx.fillText("HAPPY ♥", -11, 5);
+  ctx.fillText("HEALTHY", -11, 14);
+
+  ctx.restore();
+}
+
+function drawECGHeartbeatLine(
+  ctx: CanvasRenderingContext2D,
+  startX: number,
+  y: number,
+  width: number,
+  color = "#FF6B8B",
+) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const mid = startX + width / 2;
   ctx.beginPath();
-  ctx.ellipse(0, -5, 16, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(startX, y);
+  ctx.lineTo(mid - 28, y);
+  ctx.lineTo(mid - 20, y - 6);
+  ctx.lineTo(mid - 14, y + 6);
+  ctx.lineTo(mid - 6, y - 18);
+  ctx.lineTo(mid + 2, y + 14);
+  ctx.lineTo(mid + 10, y - 9);
+  ctx.lineTo(mid + 18, y);
+  ctx.lineTo(startX + width, y);
   ctx.stroke();
-
   ctx.restore();
 }
 
@@ -3330,7 +3381,7 @@ function drawCuteSpeechSticker(
   ctx.lineWidth = 2.2;
 
   ctx.beginPath();
-  ctx.roundRect(-52, -15, 104, 28, 14);
+  ctx.roundRect(-54, -15, 108, 28, 14);
   ctx.fill();
   ctx.stroke();
 
@@ -3343,74 +3394,54 @@ function drawCuteSpeechSticker(
 }
 
 // ============================================================================
-// HÀM CHÍNH: VẼ KHUNG ẢNH PURIKURA ĐA TẦNG SIÊU BẮT MẮT + NHÂN VẬT + PHỤ KIỆN
+// HÀM CHÍNH: VẼ PHỤ KIỆN AR 6DoF BÁM CHẶT THEO KHUÔN MẶT + KHUNG PURIKURA TRENDING
 // ============================================================================
 function drawFilterAccessoryOnCanvas(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   filterIndex: number,
+  facePose: TrackedFacePose,
 ) {
   const filter = PHOTOBOOTH_FILTERS[filterIndex % PHOTOBOOTH_FILTERS.length];
 
   ctx.save();
 
+  // 1. Lớp phủ Tone màu trong trẻo đồng nhất toàn khung (Không tạo bất kỳ hình elip nào)
   ctx.fillStyle = filter.tint;
   ctx.fillRect(0, 0, w, h);
 
-  const softGlow = ctx.createRadialGradient(
-    w / 2,
-    h / 2,
-    w * 0.2,
-    w / 2,
-    h / 2,
-    w * 0.72,
-  );
-  softGlow.addColorStop(0, "rgba(255,255,255,0)");
-  softGlow.addColorStop(1, "rgba(250, 246, 238, 0.22)");
-  ctx.fillStyle = softGlow;
-  ctx.fillRect(0, 0, w, h);
+  // 2. Lấy tọa độ 6DoF thực tế của khuôn mặt
+  const fx = facePose.foreheadX;
+  const fy = facePose.foreheadY;
+  const ex = facePose.eyeCenterX;
+  const ey = facePose.eyeCenterY;
+  const rcx = facePose.rightCheekX;
+  const rcy = facePose.rightCheekY;
+  const roll = facePose.rollAngle;
+  const yaw = facePose.yawRatio;
+  const sc = facePose.faceScale;
 
-  const blushL = ctx.createRadialGradient(
-    w * 0.39,
-    h * 0.53,
-    2,
-    w * 0.39,
-    h * 0.53,
-    w * 0.07,
-  );
-  blushL.addColorStop(0, "rgba(244, 150, 172, 0.24)");
-  blushL.addColorStop(1, "rgba(244, 150, 172, 0)");
-  ctx.fillStyle = blushL;
-  ctx.fillRect(0, 0, w, h);
+  const yawShiftX = yaw * 18 * sc;
+  const cosYaw = Math.max(0.75, Math.cos(yaw * 0.65));
 
-  const blushR = ctx.createRadialGradient(
-    w * 0.61,
-    h * 0.53,
-    2,
-    w * 0.61,
-    h * 0.53,
-    w * 0.07,
-  );
-  blushR.addColorStop(0, "rgba(244, 150, 172, 0.24)");
-  blushR.addColorStop(1, "rgba(244, 150, 172, 0)");
-  ctx.fillStyle = blushR;
-  ctx.fillRect(0, 0, w, h);
+  // Dán sticker Băng cá nhân y tế bên gò má ở các khung chẵn
+  if (filterIndex % 2 === 1) {
+    drawCuteBandAid(ctx, rcx + 4 * sc, rcy - 2 * sc, roll - 0.18, 0.54 * sc);
+  }
 
-  const cx = w / 2;
-  const headY = h * 0.22;
-
+  // --------------------------------------------------------------------------
+  // PHẦN B: VẼ PHỤ KIỆN AR 3D BÁM CHẶT THEO ĐẦU / MẮT NGƯỜI DÙNG
+  // --------------------------------------------------------------------------
   if (filterIndex === 0) {
     ctx.save();
+    ctx.translate(fx + yawShiftX, fy - 8 * sc);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
     ctx.shadowColor = "rgba(212, 175, 106, 0.5)";
     ctx.shadowBlur = 10;
 
-    const crownGrad = ctx.createLinearGradient(
-      cx - 75,
-      headY - 50,
-      cx + 75,
-      headY + 20,
-    );
+    const crownGrad = ctx.createLinearGradient(-75, -50, 75, 20);
     crownGrad.addColorStop(0, "#E5C178");
     crownGrad.addColorStop(0.5, "#FFF4D4");
     crownGrad.addColorStop(1, "#D1A654");
@@ -3420,50 +3451,42 @@ function drawFilterAccessoryOnCanvas(
     ctx.lineWidth = 2.5;
 
     ctx.beginPath();
-    ctx.moveTo(cx - 68, headY + 18);
-    ctx.quadraticCurveTo(cx - 62, headY - 18, cx - 44, headY - 26);
-    ctx.quadraticCurveTo(cx - 28, headY + 2, cx - 22, headY - 12);
-    ctx.quadraticCurveTo(cx - 10, headY - 38, cx, headY - 52);
-    ctx.quadraticCurveTo(cx + 10, headY - 38, cx + 22, headY - 12);
-    ctx.quadraticCurveTo(cx + 28, headY + 2, cx + 44, headY - 26);
-    ctx.quadraticCurveTo(cx + 62, headY - 18, cx + 68, headY + 18);
-    ctx.quadraticCurveTo(cx, headY + 8, cx - 68, headY + 18);
+    ctx.moveTo(-68, 18);
+    ctx.quadraticCurveTo(-62, -18, -44, -26);
+    ctx.quadraticCurveTo(-28, 2, -22, -12);
+    ctx.quadraticCurveTo(-10, -38, 0, -52);
+    ctx.quadraticCurveTo(10, -38, 22, -12);
+    ctx.quadraticCurveTo(28, 2, 44, -26);
+    ctx.quadraticCurveTo(62, -18, 68, 18);
+    ctx.quadraticCurveTo(0, 8, -68, 18);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = "#5B89A6";
+    ctx.fillStyle = "#FF6B8B";
     ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(cx, headY - 32);
-    ctx.quadraticCurveTo(cx + 12, headY - 16, cx, headY - 8);
-    ctx.quadraticCurveTo(cx - 12, headY - 16, cx, headY - 32);
-    ctx.closePath();
+    ctx.arc(-4, -20, 5, 0, Math.PI * 2);
+    ctx.arc(4, -20, 5, 0, Math.PI * 2);
+    ctx.moveTo(-8.5, -18);
+    ctx.lineTo(0, -9);
+    ctx.lineTo(8.5, -18);
     ctx.fill();
-    ctx.stroke();
-
-    [cx - 34, cx + 34].forEach((gx) => {
-      ctx.fillStyle = "#F29BB0";
-      ctx.beginPath();
-      ctx.arc(gx, headY - 8, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
 
     const pearls = [
-      [cx - 52, headY + 12, 3.5],
-      [cx - 35, headY + 10, 4],
-      [cx - 18, headY + 8, 4],
-      [cx, headY + 7, 4.5],
-      [cx + 18, headY + 8, 4],
-      [cx + 35, headY + 10, 4],
-      [cx + 52, headY + 12, 3.5],
-      [cx - 44, headY - 29, 5],
-      [cx - 22, headY - 15, 4],
-      [cx, headY - 56, 6.5],
-      [cx + 22, headY - 15, 4],
-      [cx + 44, headY - 29, 5],
+      [-52, 12, 3.5],
+      [-35, 10, 4],
+      [-18, 8, 4],
+      [0, 7, 4.5],
+      [18, 8, 4],
+      [35, 10, 4],
+      [52, 12, 3.5],
+      [-44, -29, 5],
+      [-22, -15, 4],
+      [0, -56, 6.5],
+      [22, -15, 4],
+      [44, -29, 5],
     ];
     pearls.forEach(([px, py, r]) => {
       ctx.beginPath();
@@ -3477,79 +3500,55 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
   } else if (filterIndex === 1) {
     ctx.save();
-    ctx.translate(cx + 8, headY - 2);
-    ctx.rotate(0.12);
+    ctx.translate(fx + yawShiftX, fy - 10 * sc);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
+    ctx.shadowColor = "rgba(91, 137, 166, 0.35)";
+    ctx.shadowBlur = 10;
 
-    for (let i = -38; i <= 38; i += 11) {
-      ctx.beginPath();
-      ctx.arc(i, 24, 7.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFFDF9";
-      ctx.fill();
-      ctx.strokeStyle = "#8BB8D6";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(-42, 24);
-    ctx.lineTo(0, -64);
-    ctx.lineTo(42, 24);
-    ctx.closePath();
-    ctx.clip();
-
-    const hatGrad = ctx.createLinearGradient(-40, -60, 40, 24);
-    hatGrad.addColorStop(0, "#7EC0E8");
-    hatGrad.addColorStop(1, "#F9C5D5");
-    ctx.fillStyle = hatGrad;
-    ctx.fillRect(-50, -70, 100, 100);
-
-    ctx.strokeStyle = "rgba(255, 250, 240, 0.9)";
-    ctx.lineWidth = 8;
-    for (let y = -60; y <= 40; y += 22) {
-      ctx.beginPath();
-      ctx.moveTo(-50, y);
-      ctx.lineTo(50, y + 25);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.beginPath();
-    ctx.moveTo(-42, 24);
-    ctx.lineTo(0, -64);
-    ctx.lineTo(42, 24);
-    ctx.closePath();
-    ctx.strokeStyle = "#FFFFFF";
+    ctx.fillStyle = "#FFFDFB";
+    ctx.strokeStyle = "#8BB8D6";
     ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-64, 14);
+    ctx.lineTo(-76, -26);
+    ctx.quadraticCurveTo(0, -52, 76, -26);
+    ctx.lineTo(64, 14);
+    ctx.quadraticCurveTo(0, 4, -64, 14);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = "#FFD166";
-    ctx.font = "bold 18px serif";
-    ctx.fillText("★", -8, -6);
+    ctx.strokeStyle = "#5B89A6";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-62, 6);
+    ctx.quadraticCurveTo(0, -4, 62, 6);
+    ctx.stroke();
 
-    const pomPoms: Array<[number, number, number, string]> = [
-      [0, -68, 13, "#FFFDF9"],
-      [-5, -65, 8, "#F7C6D0"],
-      [6, -65, 8, "#88C4E8"],
-      [0, -71, 8, "#FFFDF9"],
-    ];
-    pomPoms.forEach(([bx, by, br, bc]) => {
-      ctx.beginPath();
-      ctx.arc(bx, by, br, 0, Math.PI * 2);
-      ctx.fillStyle = bc;
-      ctx.fill();
-    });
+    ctx.fillStyle = "#FF6B8B";
+    ctx.beginPath();
+    ctx.roundRect(-5, -30, 10, 26, 3);
+    ctx.roundRect(-13, -22, 26, 10, 3);
+    ctx.fill();
+
+    drawCornerSatinBow(ctx, -64, 12, "#98CEF0", "#FFFFFF", 0.62);
+    drawCornerSatinBow(ctx, 64, 12, "#98CEF0", "#FFFFFF", 0.62);
     ctx.restore();
   } else if (filterIndex === 2) {
     ctx.save();
+    ctx.translate(fx + yawShiftX, fy - 6 * sc);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
+
     ctx.strokeStyle = "#FFFDF9";
     ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.arc(cx, headY + 38, 72, Math.PI * 1.18, Math.PI * 1.82);
+    ctx.arc(0, 38, 72, Math.PI * 1.18, Math.PI * 1.82);
     ctx.stroke();
 
     ctx.save();
-    ctx.translate(cx - 42, headY - 16);
+    ctx.translate(-42, -16);
     ctx.rotate(-0.18);
     ctx.shadowColor = "rgba(180, 140, 155, 0.35)";
     ctx.shadowBlur = 8;
@@ -3572,7 +3571,7 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
 
     ctx.save();
-    ctx.translate(cx + 42, headY - 12);
+    ctx.translate(42, -12);
     ctx.rotate(0.26);
     ctx.shadowColor = "rgba(180, 140, 155, 0.35)";
     ctx.shadowBlur = 8;
@@ -3589,57 +3588,57 @@ function drawFilterAccessoryOnCanvas(
     ctx.ellipse(0, 5, 11, 34, 0, 0, Math.PI * 2);
     ctx.fillStyle = "#F4B5C4";
     ctx.fill();
+    ctx.restore();
 
-    ctx.fillStyle = "#E8889E";
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.strokeStyle = "#F28B9F";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(-11, 34, 11, 6.5, -0.3, 0, Math.PI * 2);
-    ctx.ellipse(11, 34, 11, 6.5, 0.3, 0, Math.PI * 2);
+    ctx.roundRect(-24, -16, 48, 24, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(0, 34, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#FFF8E7";
-    ctx.fill();
-    ctx.restore();
+    ctx.fillStyle = "#FF6B8B";
+    ctx.fillRect(-3, -11, 6, 14);
+    ctx.fillRect(-7, -7, 14, 6);
     ctx.restore();
   } else if (filterIndex === 3) {
     ctx.save();
-    const eyeY = h * 0.44;
+    ctx.translate(ex, ey);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
 
-    [cx - 46, cx + 46].forEach((gx) => {
-      ctx.fillStyle = "rgba(255, 252, 245, 0.14)";
+    [-44, 44].forEach((gx) => {
+      ctx.fillStyle = "rgba(255, 252, 245, 0.12)";
       ctx.beginPath();
-      ctx.arc(gx, eyeY, 31, 0, Math.PI * 2);
+      ctx.arc(gx, 0, 30, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = "#D4AF6A";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(gx, eyeY, 31, 0, Math.PI * 2);
+      ctx.arc(gx, 0, 30, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.strokeStyle = "rgba(255,255,255,0.65)";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.moveTo(gx - 18, eyeY - 16);
-      ctx.lineTo(gx - 6, eyeY - 24);
+      ctx.moveTo(gx - 18, -16);
+      ctx.lineTo(gx - 6, -24);
       ctx.stroke();
     });
 
     ctx.strokeStyle = "#D4AF6A";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(cx - 15, eyeY - 2);
-    ctx.quadraticCurveTo(cx, eyeY - 10, cx + 15, eyeY - 2);
+    ctx.moveTo(-14, -2);
+    ctx.quadraticCurveTo(0, -10, 14, -2);
     ctx.stroke();
 
     [-1, 1].forEach((dir) => {
-      const startX = cx + dir * 77;
+      const startX = dir * 74;
       for (let i = 0; i < 8; i++) {
-        const py = eyeY + 4 + i * 9;
+        const py = 4 + i * 9;
         const px = startX + Math.sin(i * 0.5) * dir * 3;
         ctx.beginPath();
         ctx.arc(px, py, 3, 0, Math.PI * 2);
@@ -3653,28 +3652,23 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
   } else if (filterIndex === 4) {
     ctx.save();
+    ctx.translate(fx + yawShiftX, fy - 8 * sc);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
+
     ctx.strokeStyle = "rgba(255, 248, 214, 0.85)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(cx, headY + 6, 92, 28, 0, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.ellipse(0, 6, 92, 28, 0, Math.PI * 1.08, Math.PI * 1.92);
     ctx.stroke();
 
-    ctx.fillStyle = "#FFF3B8";
-    ctx.beginPath();
-    ctx.arc(cx, headY - 26, 15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#DCE7F7";
-    ctx.beginPath();
-    ctx.arc(cx + 6, headY - 30, 12, 0, Math.PI * 2);
-    ctx.fill();
+    drawECGHeartbeatLine(ctx, -55, -24, 110, "#FF6B8B");
 
     const starPositions = [
-      [cx - 84, headY + 10, 9],
-      [cx - 56, headY - 10, 12],
-      [cx - 28, headY - 20, 8],
-      [cx + 28, headY - 20, 8],
-      [cx + 56, headY - 10, 12],
-      [cx + 84, headY + 10, 9],
+      [-84, 10, 9],
+      [-56, -10, 12],
+      [56, -10, 12],
+      [84, 10, 9],
     ];
     starPositions.forEach(([sx, sy, sr]) => {
       ctx.fillStyle = "#FFF8D6";
@@ -3692,34 +3686,38 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
   } else if (filterIndex === 5) {
     ctx.save();
+    ctx.translate(fx + yawShiftX, fy - 4 * sc);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
+
     ctx.strokeStyle = "#7BA675";
     ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.arc(cx, headY + 46, 86, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.arc(0, 46, 86, Math.PI * 1.2, Math.PI * 1.8);
     ctx.stroke();
 
     const daisyNodes = [
-      [cx - 72, headY + 12, 0.85],
-      [cx - 48, headY - 2, 1],
-      [cx - 24, headY - 10, 0.9],
-      [cx, headY - 13, 1.15],
-      [cx + 24, headY - 10, 0.9],
-      [cx + 48, headY - 2, 1],
-      [cx + 72, headY + 12, 0.85],
+      [-72, 12, 0.85],
+      [-48, -2, 1],
+      [-24, -10, 0.9],
+      [0, -13, 1.15],
+      [24, -10, 0.9],
+      [48, -2, 1],
+      [72, 12, 0.85],
     ];
 
-    daisyNodes.forEach(([fx, fy]) => {
+    daisyNodes.forEach(([dx, dy]) => {
       ctx.fillStyle = "#8BB884";
       ctx.beginPath();
-      ctx.ellipse(fx - 10, fy + 5, 8, 4, -0.5, 0, Math.PI * 2);
-      ctx.ellipse(fx + 10, fy + 5, 8, 4, 0.5, 0, Math.PI * 2);
+      ctx.ellipse(dx - 10, dy + 5, 8, 4, -0.5, 0, Math.PI * 2);
+      ctx.ellipse(dx + 10, dy + 5, 8, 4, 0.5, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    daisyNodes.forEach(([fx, fy, sc]) => {
+    daisyNodes.forEach(([dx, dy, dsc]) => {
       ctx.save();
-      ctx.translate(fx, fy);
-      ctx.scale(sc, sc);
+      ctx.translate(dx, dy);
+      ctx.scale(dsc, dsc);
       for (let a = 0; a < 8; a++) {
         const ang = (a / 8) * Math.PI * 2;
         ctx.save();
@@ -3742,9 +3740,13 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
   } else if (filterIndex === 6) {
     ctx.save();
+    ctx.translate(fx + yawShiftX, fy);
+    ctx.rotate(roll);
+    ctx.scale(sc * cosYaw, sc);
+
     [
-      { x: cx - 76, y: headY + 4, rot: -0.22 },
-      { x: cx + 76, y: headY + 4, rot: 0.22 },
+      { x: -76, y: 4, rot: -0.22 },
+      { x: 76, y: 4, rot: 0.22 },
     ].forEach((bow) => {
       ctx.save();
       ctx.translate(bow.x, bow.y);
@@ -3789,67 +3791,113 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
   } else if (filterIndex === 7) {
     ctx.save();
-    ctx.fillStyle = "#FAD9C8";
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 2;
+    ctx.translate(fx + yawShiftX + 6 * sc, fy - 6 * sc);
+    ctx.rotate(roll + 0.1);
+    ctx.scale(sc * cosYaw, sc);
+
+    for (let i = -38; i <= 38; i += 11) {
+      ctx.beginPath();
+      ctx.arc(i, 24, 7.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#FFFDF9";
+      ctx.fill();
+      ctx.strokeStyle = "#8BB8D6";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
     ctx.beginPath();
-    ctx.arc(cx, headY - 10, 22, Math.PI, 0);
-    ctx.lineTo(cx, headY + 6);
+    ctx.moveTo(-42, 24);
+    ctx.lineTo(0, -64);
+    ctx.lineTo(42, 24);
     ctx.closePath();
+    ctx.fillStyle = "#98CEF0";
     ctx.fill();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(cx, headY - 3, 6.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#FFFDF9";
-    ctx.fill();
-
-    [cx - 46, cx + 46].forEach((sx) => {
-      ctx.fillStyle = "#F4B393";
+    const pomPoms: Array<[number, number, number, string]> = [
+      [0, -68, 13, "#FFFDF9"],
+      [-5, -65, 8, "#F7C6D0"],
+      [6, -65, 8, "#88C4E8"],
+      [0, -71, 8, "#FFFDF9"],
+    ];
+    pomPoms.forEach(([bx, by, br, bc]) => {
       ctx.beginPath();
-      ctx.arc(sx, headY, 10, 0, Math.PI * 2);
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = bc;
       ctx.fill();
-      ctx.stroke();
     });
     ctx.restore();
   }
 
-  const borderT = 30;
+  // --------------------------------------------------------------------------
+  // PHẦN C: KHUNG ẢNH TRENDING KOREAN PHOTOBOOTH / PURIKURA SIÊU CẦU KỲ
+  // --------------------------------------------------------------------------
+  const borderT = 32;
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, w, h);
-  ctx.roundRect(borderT, borderT, w - borderT * 2, h - borderT * 2, 26);
+  ctx.roundRect(borderT, borderT, w - borderT * 2, h - borderT * 2, 28);
   ctx.clip("evenodd");
 
-  ctx.fillStyle = filter.framePrimary;
+  const frameGrad = ctx.createLinearGradient(0, 0, w, h);
+  frameGrad.addColorStop(0, filter.framePrimary);
+  frameGrad.addColorStop(0.5, "#FFFDF9");
+  frameGrad.addColorStop(1, filter.frameSecondary);
+  ctx.fillStyle = frameGrad;
   ctx.fillRect(0, 0, w, h);
 
-  if (filter.patternType === "STRIPES") {
-    ctx.strokeStyle = filter.frameSecondary;
+  if (
+    filter.patternType === "COQUETTE_PEARL" ||
+    filter.patternType === "CANDY_STRIPE"
+  ) {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
     ctx.lineWidth = 12;
-    for (let i = -h; i < w + h; i += 26) {
+    for (let i = -h; i < w + h; i += 24) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i + h, h);
       ctx.stroke();
     }
-  } else if (filter.patternType === "DOTS") {
-    ctx.fillStyle = filter.frameSecondary;
-    for (let x = 14; x < w; x += 28) {
-      for (let y = 14; y < h; y += 28) {
-        ctx.beginPath();
-        ctx.arc(x + ((y / 28) % 2 === 0 ? 0 : 12), y, 5.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+  } else if (
+    filter.patternType === "MEDICAL_CHART" ||
+    filter.patternType === "Y2K_WINDOW"
+  ) {
+    ctx.strokeStyle = "rgba(91, 137, 166, 0.18)";
+    ctx.lineWidth = 1.2;
+    for (let x = 0; x < w; x += 18) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 18) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+  } else if (
+    filter.patternType === "GINGHAM_LACE" ||
+    filter.patternType === "BOTANICAL_DIARY"
+  ) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    for (let x = 0; x < w; x += 26) {
+      ctx.fillRect(x, 0, 13, h);
+    }
+    for (let y = 0; y < h; y += 26) {
+      ctx.fillRect(0, y, w, 13);
     }
   } else {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
-    for (let x = 0; x < w; x += 28) {
-      ctx.fillRect(x, 0, 14, h);
-    }
-    for (let y = 0; y < h; y += 28) {
-      ctx.fillRect(0, y, w, 14);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    for (let x = 14; x < w; x += 26) {
+      for (let y = 14; y < h; y += 26) {
+        ctx.beginPath();
+        ctx.arc(x + ((y / 26) % 2 === 0 ? 0 : 11), y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
   ctx.restore();
@@ -3859,10 +3907,10 @@ function drawFilterAccessoryOnCanvas(
   ctx.strokeStyle = filter.accentColor;
   ctx.lineWidth = 1.6;
 
-  for (let x = borderT + 14; x <= w - borderT - 14; x += 22) {
+  for (let x = borderT + 14; x <= w - borderT - 14; x += 20) {
     [borderT, h - borderT].forEach((ly) => {
       ctx.beginPath();
-      ctx.arc(x, ly, 9, 0, Math.PI * 2);
+      ctx.arc(x, ly, 8.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
@@ -3874,10 +3922,10 @@ function drawFilterAccessoryOnCanvas(
     });
   }
 
-  for (let y = borderT + 14; y <= h - borderT - 14; y += 22) {
+  for (let y = borderT + 14; y <= h - borderT - 14; y += 20) {
     [borderT, w - borderT].forEach((lx) => {
       ctx.beginPath();
-      ctx.arc(lx, y, 9, 0, Math.PI * 2);
+      ctx.arc(lx, y, 8.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
@@ -3890,7 +3938,7 @@ function drawFilterAccessoryOnCanvas(
   }
 
   ctx.beginPath();
-  ctx.roundRect(borderT, borderT, w - borderT * 2, h - borderT * 2, 26);
+  ctx.roundRect(borderT, borderT, w - borderT * 2, h - borderT * 2, 28);
   ctx.strokeStyle = filter.accentColor;
   ctx.lineWidth = 3;
   ctx.stroke();
@@ -3900,6 +3948,21 @@ function drawFilterAccessoryOnCanvas(
   ctx.strokeStyle = "#FFFFFF";
   ctx.lineWidth = 2.5;
   ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 253, 249, 0.92)";
+  ctx.strokeStyle = filter.accentColor;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.roundRect(w / 2 - 115, 7, 230, 18, 9);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#283E52";
+  ctx.font = "bold 9px 'Be Vietnam Pro', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`● REC  |  BIRTHDAY STUDIO  |  19.09 ♥ 15.10`, w / 2, 19);
   ctx.restore();
 
   const flagColors = [
@@ -3922,9 +3985,9 @@ function drawFilterAccessoryOnCanvas(
     const sag = Math.sin((i / numFlags) * Math.PI) * 10;
 
     ctx.beginPath();
-    ctx.moveTo(fx1, 20 + sag);
-    ctx.lineTo(fx2, 20 + sag);
-    ctx.lineTo(fmid, 46 + sag);
+    ctx.moveTo(fx1, 26 + sag);
+    ctx.lineTo(fx2, 26 + sag);
+    ctx.lineTo(fmid, 50 + sag);
     ctx.closePath();
     ctx.fillStyle = flagColors[i % flagColors.length];
     ctx.fill();
@@ -3933,55 +3996,58 @@ function drawFilterAccessoryOnCanvas(
     ctx.stroke();
   }
 
-  drawCornerSatinBow(ctx, 36, 34, "#F497B0", "#FFFFFF", 0.9);
-  drawCornerSatinBow(ctx, w - 36, 34, "#79B4D9", "#FFFFFF", 0.9);
+  drawCornerSatinBow(ctx, 36, 36, "#F497B0", "#FFFFFF", 0.9);
+  drawCornerSatinBow(ctx, w - 36, 36, "#79B4D9", "#FFFFFF", 0.9);
   drawCornerSatinBow(ctx, 34, h - 108, "#79B4D9", "#FFFFFF", 0.78);
   drawCornerSatinBow(ctx, w - 34, h - 108, "#F497B0", "#FFFFFF", 0.78);
 
-  drawBalloonCluster(ctx, 44, 118, 0.85);
-  drawBalloonCluster(ctx, w - 44, 118, 0.85);
+  drawBalloonCluster(ctx, 44, 114, 0.82);
+  drawBalloonCluster(ctx, w - 44, 114, 0.82);
 
-  drawSwirlLollipop(ctx, 38, 225, 0.88);
-  drawSwirlLollipop(ctx, w - 38, 225, 0.88);
+  drawHeartStethoscopeIcon(ctx, 40, 208, "#487594", 0.92);
+  drawMedicalClipboardIcon(ctx, w - 40, 208, 0.88);
 
-  drawPastelMacaron(ctx, 40, 305, "#FFACC7", "#FFFDF7", 0.82);
-  drawPastelMacaron(ctx, w - 40, 305, "#98CEF0", "#FFFDF7", 0.82);
+  drawCuteCapsulePill(ctx, 38, 285, -0.35, "#FF9EBB", "#FFFDF9", 0.88);
+  drawCuteSyringeIcon(ctx, w - 38, 285, 0.4, 0.88);
+
+  drawCuteBandAid(ctx, 44, 348, 0.35, 0.78);
+  drawCuteCapsulePill(ctx, w - 40, 348, 0.4, "#88C4E8", "#FFFDF9", 0.82);
 
   drawCuteSpeechSticker(
     ctx,
-    112,
-    68,
+    114,
+    70,
     filter.stickerText,
     "#FFFDF9",
     filter.accentColor,
   );
   drawCuteSpeechSticker(
     ctx,
-    w - 108,
-    68,
-    "Happy B-Day! 🎉",
+    w - 110,
+    70,
+    "Happy B-Day! 🩺",
     "#FFFDF9",
     "#79B4D9",
   );
 
   if (filterIndex % 4 === 0) {
-    drawCuteTeddyBear(ctx, 68, h - 56, 0.94);
-    drawCuteBunnyCharacter(ctx, w - 68, h - 52, 0.96);
+    drawDoctorTeddyBear(ctx, 68, h - 56, 0.94);
+    drawCuteBunnyDoctor(ctx, w - 68, h - 52, 0.96);
   } else if (filterIndex % 4 === 1) {
-    drawCuteBunnyCharacter(ctx, 66, h - 52, 0.96);
-    drawCuteKittyCharacter(ctx, w - 68, h - 52, 0.96);
+    drawCuteBunnyDoctor(ctx, 66, h - 52, 0.96);
+    drawCuteKittyDoctor(ctx, w - 68, h - 52, 0.96);
   } else if (filterIndex % 4 === 2) {
     drawCutePoodlePuppy(ctx, 66, h - 52, 0.96);
-    drawCuteBunnyCharacter(ctx, w - 68, h - 52, 0.96);
+    drawDoctorTeddyBear(ctx, w - 68, h - 56, 0.94);
   } else {
-    drawCuteKittyCharacter(ctx, 66, h - 52, 0.96);
-    drawCuteTeddyBear(ctx, w - 68, h - 56, 0.94);
+    drawCuteKittyDoctor(ctx, 66, h - 52, 0.96);
+    drawDoctorTeddyBear(ctx, w - 68, h - 56, 0.94);
   }
 
   drawMiniBirthdayCakeIcon(ctx, 128, h - 42, 0.88);
   drawCuteGiftBox(ctx, w - 128, h - 40, "#CFE6F7", "#F28B9F", 0.88);
 
-  const bannerW = 306;
+  const bannerW = 308;
   const bannerH = 38;
   const bx = (w - bannerW) / 2;
   const by = h - 50;
@@ -4022,7 +4088,7 @@ function drawFilterAccessoryOnCanvas(
   ctx.fillStyle = "#283E52";
   ctx.font = "bold 13px 'Be Vietnam Pro', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`🎂 HAPPY BIRTHDAY • ${filter.badge}`, w / 2, by + 24);
+  ctx.fillText(`🎂 HAPPY BIRTHDAY • 🩺💖✨`, w / 2, by + 24);
 
   ctx.restore();
 }
@@ -4031,7 +4097,20 @@ interface CapturedPhoto {
   id: number;
   dataUrl: string;
   filterName: string;
-  badge: string;
+}
+
+interface VisionLandmark {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface VisionFaceLandmarker {
+  detectForVideo: (
+    video: HTMLVideoElement,
+    timestamp: number,
+  ) => { faceLandmarks?: VisionLandmark[][] };
+  close?: () => void;
 }
 
 function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
@@ -4042,6 +4121,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [activeFilterIdx, setActiveFilterIdx] = useState(0);
+  const [faceDetectedStatus, setFaceDetectedStatus] = useState(false);
 
   const [sessionState, setSessionState] = useState<
     "IDLE" | "SHOOTING" | "SELECTING"
@@ -4056,7 +4136,253 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
     "IDLE" | "UPLOADING" | "DONE"
   >("IDLE");
 
-  // Hàm kết nối lại luồng Camera (chỉ cập nhật state bên trong callback bất đồng bộ để tuân thủ React Hooks Lint)
+  const targetFacePoseRef = useRef<TrackedFacePose>({
+    detected: false,
+    foreheadX: 320,
+    foreheadY: 112,
+    eyeCenterX: 320,
+    eyeCenterY: 205,
+    leftCheekX: 252,
+    leftCheekY: 252,
+    rightCheekX: 388,
+    rightCheekY: 252,
+    chinX: 320,
+    chinY: 318,
+    rollAngle: 0,
+    yawRatio: 0,
+    pitchRatio: 0,
+    faceScale: 1,
+  });
+
+  const smoothFacePoseRef = useRef<TrackedFacePose>({
+    ...targetFacePoseRef.current,
+  });
+
+  useEffect(() => {
+    let isCancelled = false;
+    let faceLandmarker: VisionFaceLandmarker | null = null;
+    let detectTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastVideoTime = -1;
+
+    const skinCanvas = document.createElement("canvas");
+    skinCanvas.width = 80;
+    skinCanvas.height = 60;
+    const skinCtx = skinCanvas.getContext("2d", { willReadFrequently: true });
+
+    const updatePoseFrom478Landmarks = (landmarks: VisionLandmark[]) => {
+      const w = 640;
+      const h = 480;
+      const pt = (idx: number) => ({
+        x: (1 - landmarks[idx].x) * w,
+        y: landmarks[idx].y * h,
+        z: landmarks[idx].z,
+      });
+
+      const forehead = pt(10);
+      const noseBridge = pt(168);
+      const noseTip = pt(1);
+      const leftEyeOuter = pt(263);
+      const rightEyeOuter = pt(33);
+      const leftCheek = pt(454);
+      const rightCheek = pt(234);
+      const chin = pt(152);
+
+      const dx = rightEyeOuter.x - leftEyeOuter.x;
+      const dy = rightEyeOuter.y - leftEyeOuter.y;
+      const eyeDist = Math.hypot(dx, dy);
+      const rollAngle = Math.atan2(dy, dx);
+      const faceScale = Math.max(0.65, Math.min(1.75, eyeDist / 106));
+
+      const midEyeX = (leftEyeOuter.x + rightEyeOuter.x) * 0.5;
+      const yawRatio = Math.max(
+        -1,
+        Math.min(1, (noseTip.x - midEyeX) / (eyeDist * 0.55)),
+      );
+      const faceH = Math.max(1, chin.y - forehead.y);
+      const pitchRatio = Math.max(
+        -1,
+        Math.min(1, (noseTip.y - forehead.y) / faceH - 0.58),
+      );
+
+      const upX = Math.sin(rollAngle);
+      const upY = -Math.cos(rollAngle);
+
+      targetFacePoseRef.current = {
+        detected: true,
+        foreheadX: forehead.x + upX * (16 * faceScale),
+        foreheadY: forehead.y + upY * (16 * faceScale),
+        eyeCenterX: noseBridge.x,
+        eyeCenterY: noseBridge.y,
+        leftCheekX: leftCheek.x * 0.55 + noseBridge.x * 0.45,
+        leftCheekY: leftCheek.y + 4 * faceScale,
+        rightCheekX: rightCheek.x * 0.55 + noseBridge.x * 0.45,
+        rightCheekY: rightCheek.y + 4 * faceScale,
+        chinX: chin.x,
+        chinY: chin.y,
+        rollAngle,
+        yawRatio,
+        pitchRatio,
+        faceScale,
+      };
+      setFaceDetectedStatus(true);
+    };
+
+    const runSkinMomentFallback = (video: HTMLVideoElement) => {
+      if (!skinCtx) return;
+      const sw = 80;
+      const sh = 60;
+      skinCtx.save();
+      skinCtx.translate(sw, 0);
+      skinCtx.scale(-1, 1);
+      skinCtx.drawImage(video, 0, 0, sw, sh);
+      skinCtx.restore();
+
+      const imgData = skinCtx.getImageData(0, 0, sw, sh).data;
+      let m00 = 0;
+      let m10 = 0;
+      let m01 = 0;
+      let m11 = 0;
+      let m20 = 0;
+      let m02 = 0;
+
+      for (let y = 6; y < sh - 6; y++) {
+        for (let x = 8; x < sw - 8; x++) {
+          const i = (y * sw + x) * 4;
+          const r = imgData[i];
+          const g = imgData[i + 1];
+          const b = imgData[i + 2];
+
+          const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+          const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+
+          if (
+            cr >= 134 &&
+            cr <= 175 &&
+            cb >= 76 &&
+            cb <= 128 &&
+            r > 65 &&
+            r > g &&
+            r > b
+          ) {
+            m00 += 1;
+            m10 += x;
+            m01 += y;
+            m11 += x * y;
+            m20 += x * x;
+            m02 += y * y;
+          }
+        }
+      }
+
+      if (m00 > 42) {
+        const cx = (m10 / m00 / sw) * 640;
+        const cy = (m01 / m00 / sh) * 480;
+
+        const u20 = m20 / m00 - (m10 / m00) ** 2;
+        const u02 = m02 / m00 - (m01 / m00) ** 2;
+        const u11 = m11 / m00 - (m10 / m00) * (m01 / m00);
+        const rawTilt = 0.5 * Math.atan2(2 * u11, u20 - u02);
+        const rollAngle = Math.max(-0.45, Math.min(0.45, rawTilt * 0.35));
+
+        const estScale = Math.max(0.75, Math.min(1.45, Math.sqrt(m00 / 480)));
+        const upX = Math.sin(rollAngle);
+        const upY = -Math.cos(rollAngle);
+
+        targetFacePoseRef.current = {
+          detected: true,
+          foreheadX: cx + upX * (82 * estScale),
+          foreheadY: cy + upY * (82 * estScale),
+          eyeCenterX: cx + upX * (18 * estScale),
+          eyeCenterY: cy + upY * (18 * estScale),
+          leftCheekX: cx - 56 * estScale,
+          leftCheekY: cy + 16 * estScale,
+          rightCheekX: cx + 56 * estScale,
+          rightCheekY: cy + 16 * estScale,
+          chinX: cx - upX * (78 * estScale),
+          chinY: cy - upY * (78 * estScale),
+          rollAngle,
+          yawRatio: 0,
+          pitchRatio: 0,
+          faceScale: estScale,
+        };
+        setFaceDetectedStatus(true);
+      }
+    };
+
+    const runTrackingCycle = () => {
+      if (isCancelled) return;
+      const video = videoRef.current;
+
+      if (video && video.readyState >= 2 && !video.paused) {
+        if (faceLandmarker) {
+          try {
+            const nowMs = performance.now();
+            if (video.currentTime !== lastVideoTime) {
+              lastVideoTime = video.currentTime;
+              const res = faceLandmarker.detectForVideo(video, nowMs);
+              if (res.faceLandmarks && res.faceLandmarks.length > 0) {
+                updatePoseFrom478Landmarks(res.faceLandmarks[0]);
+              } else {
+                runSkinMomentFallback(video);
+              }
+            }
+          } catch {
+            runSkinMomentFallback(video);
+          }
+        } else {
+          runSkinMomentFallback(video);
+        }
+      }
+
+      detectTimer = setTimeout(runTrackingCycle, 33);
+    };
+
+    runTrackingCycle();
+
+    const loadTasksVisionAI = async () => {
+      try {
+        const visionModuleUrl =
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
+        const vision = await import(/* @vite-ignore */ visionModuleUrl);
+        if (isCancelled) return;
+
+        const filesetResolver = await vision.FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm",
+        );
+        if (isCancelled) return;
+
+        faceLandmarker = await vision.FaceLandmarker.createFromOptions(
+          filesetResolver,
+          {
+            baseOptions: {
+              modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+              delegate: "GPU",
+            },
+            runningMode: "VIDEO",
+            numFaces: 1,
+          },
+        );
+      } catch {
+        // Fallback tracker tetap chạy mượt
+      }
+    };
+
+    loadTasksVisionAI();
+
+    return () => {
+      isCancelled = true;
+      if (detectTimer) clearTimeout(detectTimer);
+      if (faceLandmarker && faceLandmarker.close) {
+        try {
+          faceLandmarker.close();
+        } catch {
+          // Ignore close error
+        }
+      }
+    };
+  }, []);
+
   const connectCameraStream = useCallback(() => {
     const hasActiveTracks =
       streamRef.current &&
@@ -4100,7 +4426,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
       })
       .catch(() => {
         setCameraError(
-          "Không tìm thấy hoặc chưa cấp quyền Camera. Hệ thống đã bật Chế độ Giả lập Studio để bạn vẫn trải nghiệm chụp đủ 8 khung ảnh sinh nhật!",
+          "Không tìm thấy hoặc chưa cấp quyền Camera. Hệ thống đã bật Chế độ Giả lập Studio để bạn vẫn trải nghiệm chụp đủ 8 tấm ảnh!",
         );
         setCameraReady(true);
       });
@@ -4116,8 +4442,20 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
     };
   }, [connectCameraStream]);
 
+  // Vòng lặp Render 60FPS: Đã xóa bỏ hoàn toàn vùng cắt elip (ctx.ellipse + ctx.clip),
+  // thay bằng thuật toán Full-Frame Soft-Focus Diffusion làm mịn da đồng nhất không tì vết
   useEffect(() => {
     let animId: number;
+    const adaptiveLerp = (
+      curVal: number,
+      targetVal: number,
+      baseAlpha = 0.35,
+    ) => {
+      const delta = Math.abs(targetVal - curVal);
+      const dynamicAlpha = Math.min(0.78, baseAlpha + delta * 0.015);
+      return curVal + (targetVal - curVal) * dynamicAlpha;
+    };
+
     const renderLoop = () => {
       const canvas = previewCanvasRef.current;
       const video = videoRef.current;
@@ -4129,14 +4467,51 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
           const filterObj =
             PHOTOBOOTH_FILTERS[activeFilterIdx % PHOTOBOOTH_FILTERS.length];
 
+          const target = targetFacePoseRef.current;
+          const cur = smoothFacePoseRef.current;
+
+          cur.detected = target.detected;
+          cur.foreheadX = adaptiveLerp(cur.foreheadX, target.foreheadX);
+          cur.foreheadY = adaptiveLerp(cur.foreheadY, target.foreheadY);
+          cur.eyeCenterX = adaptiveLerp(cur.eyeCenterX, target.eyeCenterX);
+          cur.eyeCenterY = adaptiveLerp(cur.eyeCenterY, target.eyeCenterY);
+          cur.leftCheekX = adaptiveLerp(cur.leftCheekX, target.leftCheekX);
+          cur.leftCheekY = adaptiveLerp(cur.leftCheekY, target.leftCheekY);
+          cur.rightCheekX = adaptiveLerp(cur.rightCheekX, target.rightCheekX);
+          cur.rightCheekY = adaptiveLerp(cur.rightCheekY, target.rightCheekY);
+          cur.chinX = adaptiveLerp(cur.chinX, target.chinX);
+          cur.chinY = adaptiveLerp(cur.chinY, target.chinY);
+          cur.rollAngle = adaptiveLerp(cur.rollAngle, target.rollAngle, 0.32);
+          cur.yawRatio = adaptiveLerp(cur.yawRatio, target.yawRatio, 0.3);
+          cur.pitchRatio = adaptiveLerp(cur.pitchRatio, target.pitchRatio, 0.3);
+          cur.faceScale = adaptiveLerp(cur.faceScale, target.faceScale, 0.3);
+
           ctx.clearRect(0, 0, w, h);
-          ctx.save();
-          ctx.filter = filterObj.cssFilter;
 
           if (video && video.readyState >= 2 && !cameraError) {
+            // PASS 1: Vẽ lớp ảnh gốc sắc nét với màu sắc trong trẻo
+            ctx.save();
+            ctx.filter = filterObj.cssFilter;
             ctx.translate(w, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, w, h);
+            ctx.restore();
+
+            // PASS 2: LÀM MỊN DA TOÀN KHUNG (SEAMLESS FULL-FRAME SOFT-FOCUS DIFFUSION)
+            // Không dùng ctx.ellipse hay ctx.clip -> Tuyệt đối không có vệt viền elip quanh mặt!
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.globalCompositeOperation = "soft-light";
+            ctx.filter = "blur(4px) brightness(1.06)";
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, w, h);
+
+            ctx.globalAlpha = 0.14;
+            ctx.globalCompositeOperation = "screen";
+            ctx.filter = "blur(2.5px)";
+            ctx.drawImage(video, 0, 0, w, h);
+            ctx.restore();
           } else {
             const grad = ctx.createLinearGradient(0, 0, w, h);
             grad.addColorStop(0, "#DCECF7");
@@ -4144,19 +4519,14 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, w, h);
 
-            ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-            ctx.beginPath();
-            ctx.arc(w / 2, h * 0.49, 78, 0, Math.PI * 2);
-            ctx.fill();
-
             ctx.fillStyle = "#487594";
             ctx.font = "600 15px 'Be Vietnam Pro', sans-serif";
             ctx.textAlign = "center";
             ctx.fillText("📸 Khung Hình Studio Sinh Nhật", w / 2, h * 0.49 + 5);
           }
-          ctx.restore();
 
-          drawFilterAccessoryOnCanvas(ctx, w, h, activeFilterIdx);
+          // PASS 3: Vẽ Phụ kiện AR 3D bám theo khuôn mặt & Khung Purikura
+          drawFilterAccessoryOnCanvas(ctx, w, h, activeFilterIdx, cur);
         }
       }
       animId = requestAnimationFrame(renderLoop);
@@ -4179,7 +4549,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
         const canvas = previewCanvasRef.current;
         if (!canvas) return;
         const dataUrl = canvas.toDataURL("image/png");
-        const currentFilter = PHOTOBOOTH_FILTERS[currentShotIdx];
 
         setFlashEffect(true);
         setTimeout(() => setFlashEffect(false), 260);
@@ -4190,8 +4559,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
             {
               id: currentShotIdx,
               dataUrl,
-              filterName: currentFilter.name,
-              badge: currentFilter.badge,
+              filterName: `Frame_${currentShotIdx + 1}`,
             },
           ];
 
@@ -4230,7 +4598,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
     setSessionState("SHOOTING");
   };
 
-  // Khi bấm "Chụp lại": quay về màn hình chuẩn bị (IDLE) với Camera bật sẵn, đợi người dùng bấm nút chụp
   const handleReturnToPrepareScreen = () => {
     setCapturedPhotos([]);
     setSelectedIndices([]);
@@ -4261,7 +4628,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
     const photoH = 360;
     const pad = 40;
     const gap = 24;
-    const footerH = 145;
+    const footerH = 155;
 
     stripCanvas.width = photoW + pad * 2;
     stripCanvas.height = pad + photoH * 4 + gap * 3 + footerH;
@@ -4303,29 +4670,36 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
       ctx.drawImage(img, pad, yPos, photoW, photoH);
     }
 
-    drawCuteTeddyBear(ctx, 82, stripCanvas.height - 66, 0.92);
-    drawCuteBunnyCharacter(
+    drawDoctorTeddyBear(ctx, 82, stripCanvas.height - 68, 0.92);
+    drawCuteBunnyDoctor(
       ctx,
       stripCanvas.width - 82,
-      stripCanvas.height - 62,
+      stripCanvas.height - 64,
       0.95,
+    );
+    drawECGHeartbeatLine(
+      ctx,
+      stripCanvas.width / 2 - 90,
+      stripCanvas.height - 105,
+      180,
+      "#FF6B8B",
     );
 
     ctx.fillStyle = "#283E52";
-    ctx.font = "bold 23px 'Lora', Georgia, serif";
+    ctx.font = "bold 22px 'Lora', Georgia, serif";
     ctx.textAlign = "center";
     ctx.fillText(
-      "✦ HAPPY BIRTHDAY PARTY ✦",
+      "✦ HAPPY BIRTHDAY DOCTOR ✦",
       stripCanvas.width / 2,
-      stripCanvas.height - 70,
+      stripCanvas.height - 66,
     );
 
     ctx.fillStyle = "#487594";
     ctx.font = "600 14px 'Be Vietnam Pro', sans-serif";
     ctx.fillText(
-      `Kỷ niệm ngọt ngào • ${new Date().toLocaleDateString("vi-VN")}`,
+      `🩺 Kỷ niệm ngọt ngào • ${new Date().toLocaleDateString("vi-VN")} 💊`,
       stripCanvas.width / 2,
-      stripCanvas.height - 38,
+      stripCanvas.height - 36,
     );
 
     const link = document.createElement("a");
@@ -4336,7 +4710,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
 
   return (
     <div className="min-h-screen py-8 px-4 relative z-20">
-      {/* Giữ thẻ video luôn cố định trong DOM để không bị ngắt kết nối Camera khi chuyển màn hình */}
       <video ref={videoRef} playsInline muted autoPlay className="hidden" />
 
       <div className="max-w-5xl mx-auto">
@@ -4350,11 +4723,11 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
             </button>
             <div>
               <h1 className="font-serif-vn text-xl sm:text-2xl font-bold text-[#283E52]">
-                Tiệm Photobooth Sinh Nhật 📸
+                Tiệm Photobooth Sinh Nhật AR 📸🩺
               </h1>
               <p className="text-xs text-[#546E82]">
-                8 Khung Purikura họa tiết cầu kỳ & Nhân vật dễ thương • Tự động
-                chụp 8 tấm (8 giây/tấm)
+                Làm mịn da tự nhiên & Nhận diện khuôn mặt 3D AR tự động bám
+                Filter
               </p>
             </div>
           </div>
@@ -4372,10 +4745,25 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
         {sessionState !== "SELECTING" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             <div className="lg:col-span-2 bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-5 shadow-md flex flex-col items-center">
-              <div className="w-full flex items-center justify-between mb-3 px-1">
-                <span className="text-xs font-semibold text-[#487594] bg-[#E6F0F7] px-3 py-1 rounded-full">
-                  {PHOTOBOOTH_FILTERS[activeFilterIdx].name}
-                </span>
+              <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[#487594] bg-[#E6F0F7] px-3.5 py-1 rounded-full">
+                    Khung #{activeFilterIdx + 1}{" "}
+                    {PHOTOBOOTH_FILTERS[activeFilterIdx].icon}
+                  </span>
+                  <span
+                    className={`text-[11px] font-medium px-3 py-1 rounded-full border transition-all ${
+                      faceDetectedStatus
+                        ? "bg-[#EBF7EE] text-[#256B3E] border-[#B7DFC2]"
+                        : "bg-[#F4F1EA] text-[#6E7F8D] border-[#D8E0E6]"
+                    }`}
+                  >
+                    {faceDetectedStatus
+                      ? "🎯 Đã khóa khuôn mặt 3D AR + Làm mịn da"
+                      : "✨ Đang khởi tạo AR..."}
+                  </span>
+                </div>
+
                 {sessionState === "SHOOTING" && (
                   <span className="text-xs font-bold text-[#283E52] bg-[#F2ECE1] px-3.5 py-1 rounded-full border border-[#DEC89E]">
                     Đang chụp tấm {currentShotIdx + 1} / 8
@@ -4428,8 +4816,8 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                 ) : (
                   <div className="w-full max-w-md text-center">
                     <p className="text-xs font-semibold text-[#487594] mb-2">
-                      ✨ Hãy căn chỉnh khuôn mặt vào giữa khung để vừa vặn với
-                      Vương miện, Tai thỏ & Kính nhé!
+                      ✨ Hãy thoải mái nghiêng đầu hoặc di chuyển, Filter sẽ tự
+                      động bám sát theo khuôn mặt bạn!
                     </p>
                     <div className="grid grid-cols-8 gap-1.5">
                       {Array.from({ length: 8 }).map((_, i) => (
@@ -4452,31 +4840,29 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
 
             <div className="bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-5 shadow-md">
               <h3 className="font-serif-vn text-base font-bold text-[#283E52] mb-1">
-                8 Khung Filter Purikura Cầu Kỳ
+                Chọn Thử 8 Khung Ảnh 🩺🎂
               </h3>
               <p className="text-xs text-[#546E82] mb-4">
                 {sessionState === "IDLE"
-                  ? "Nhấp vào từng Filter để xem trước khung ren, họa tiết kẹo ngọt, Gấu/Thỏ/Mèo/Cún và phụ kiện:"
-                  : "Hệ thống đang tự động chuyển lần lượt qua 8 khung Filter:"}
+                  ? "Nhấp vào từng ô bên dưới để thử hiệu ứng AR bám theo khuôn mặt:"
+                  : "Hệ thống đang tự động chuyển lần lượt qua 8 khung:"}
               </p>
 
-              <div className="grid grid-cols-2 gap-2 mb-5">
+              <div className="grid grid-cols-4 gap-2.5 mb-5">
                 {PHOTOBOOTH_FILTERS.map((f, idx) => (
                   <button
                     key={f.id}
                     type="button"
                     disabled={sessionState === "SHOOTING"}
                     onClick={() => setActiveFilterIdx(idx)}
-                    className={`p-2.5 rounded-xl text-left text-xs border transition-all ${
+                    className={`py-3 px-2 rounded-2xl text-center border transition-all flex flex-col items-center justify-center gap-1 ${
                       activeFilterIdx === idx
-                        ? "bg-[#5B89A6] text-white border-[#5B89A6] font-semibold shadow-sm"
+                        ? "bg-[#5B89A6] text-white border-[#5B89A6] font-bold shadow-sm scale-105"
                         : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#7BA7C4] cursor-pointer"
                     }`}
                   >
-                    <div className="truncate">{f.badge}</div>
-                    <div className="text-[10px] opacity-80 truncate mt-0.5">
-                      {f.name}
-                    </div>
+                    <span className="text-lg leading-none">{f.icon}</span>
+                    <span className="text-[11px]">#{idx + 1}</span>
                   </button>
                 ))}
               </div>
@@ -4491,7 +4877,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                       <img
                         key={p.id}
                         src={p.dataUrl}
-                        alt={p.filterName}
+                        alt={`Shot ${p.id + 1}`}
                         className="w-full aspect-[4/3] object-cover rounded-lg border border-[#C8DCEB]"
                       />
                     ))}
@@ -4540,12 +4926,12 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                     >
                       <img
                         src={photo.dataUrl}
-                        alt={photo.filterName}
+                        alt={`Ảnh ${idx + 1}`}
                         className="w-full aspect-[4/3] object-cover block"
                       />
                       <div className="p-2 bg-white flex items-center justify-between">
-                        <span className="text-[11px] font-medium text-[#334B5E] truncate">
-                          {photo.badge}
+                        <span className="text-[11px] font-medium text-[#334B5E]">
+                          Ảnh #{idx + 1}
                         </span>
                         {isSelected ? (
                           <span className="w-5 h-5 rounded-full bg-[#5B89A6] text-white text-[11px] font-bold flex items-center justify-center">
@@ -4600,7 +4986,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                     ✦ HAPPY BIRTHDAY ✦
                   </p>
                   <p className="text-[9px] text-[#487594]">
-                    🧸 Sweet Party Strip 🐰
+                    🩺 Doctor Party Strip 🎂
                   </p>
                 </div>
               </div>
@@ -4638,17 +5024,23 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
 }
 
 // ============================================================================
-// COMPONENT 3: TRANG CHÚC MỪNG 3D (DỜI BOX TIÊU ĐỀ XUỐNG & THÊM NÚT PHOTOBOOTH GÓC PHẢI)
+// COMPONENT 3: TRANG CHÚC MỪNG 3D (NHỚ TRẠNG THÁI ĐÃ VIẾT ĐIỀU ƯỚC KHI QUAY VỀ TỪ PHOTOBOOTH)
 // ============================================================================
 function CelebrationPage({
   onOpenPhotobooth,
+  hasWrittenWishOnce,
+  onMarkWishWritten,
+  candleState,
+  setCandleState,
 }: {
   onOpenPhotobooth: () => void;
+  hasWrittenWishOnce: boolean;
+  onMarkWishWritten: () => void;
+  candleState: "UNLIT" | "LIT" | "BLOWING" | "BLOWN";
+  setCandleState: React.Dispatch<
+    React.SetStateAction<"UNLIT" | "LIT" | "BLOWING" | "BLOWN">
+  >;
 }) {
-  const [candleState, setCandleState] = useState<
-    "UNLIT" | "LIT" | "BLOWING" | "BLOWN"
-  >("UNLIT");
-  const [hasWrittenWishOnce, setHasWrittenWishOnce] = useState(false);
   const [wishText, setWishText] = useState("");
   const [isSendingWish, setIsSendingWish] = useState(false);
   const [showWishModal, setShowWishModal] = useState(false);
@@ -4687,7 +5079,7 @@ function CelebrationPage({
     });
 
     setIsSendingWish(false);
-    setHasWrittenWishOnce(true);
+    onMarkWishWritten();
     setShowWishModal(false);
     triggerRealisticBlowOut(true);
   };
@@ -4710,7 +5102,7 @@ function CelebrationPage({
               Tiệm Photobooth
             </div>
             <div className="text-[10px] text-[#5B89A6] font-medium">
-              Chụp 8 kiểu ảnh kỷ niệm →
+              Chụp 8 kiểu ảnh AR →
             </div>
           </div>
         </button>
@@ -4776,12 +5168,23 @@ function CelebrationPage({
 
       <footer className="relative z-20 pb-8 px-4 flex flex-col items-center gap-3 pointer-events-auto">
         {candleState === "UNLIT" && (
-          <button
-            onClick={handleLightCandle}
-            className="px-8 py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-sm shadow-[0_10px_28px_rgba(91,137,166,0.38)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span>🕯️ Thắp nến sinh nhật</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={handleLightCandle}
+              className="px-8 py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-sm shadow-[0_10px_28px_rgba(91,137,166,0.38)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <span>🕯️ Thắp nến sinh nhật</span>
+            </button>
+
+            {hasWrittenWishOnce && (
+              <button
+                onClick={() => setIsLetterVisible((prev) => !prev)}
+                className="px-7 py-4 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
+              >
+                {isLetterVisible ? "Ẩn lá thư 📖" : "Hiện lá thư chúc mừng 💌"}
+              </button>
+            )}
+          </div>
         )}
 
         {candleState === "LIT" && !showWishModal && (
@@ -4896,7 +5299,7 @@ function CelebrationPage({
 }
 
 // ============================================================================
-// COMPONENT GỐC QUẢN LÝ CHUYỂN MÀN HÌNH & THEME XANH BẦU TRỜI - ĐẠI DƯƠNG PASTEL
+// COMPONENT GỐC QUẢN LÝ CHUYỂN MÀN HÌNH & LƯU TRẠNG THÁI ĐÃ VIẾT ĐIỀU ƯỚC
 // ============================================================================
 export default function App() {
   const [screen, setScreen] = useState<
@@ -4908,6 +5311,11 @@ export default function App() {
     null,
     null,
   ]);
+
+  const [hasWrittenWishOnce, setHasWrittenWishOnce] = useState(false);
+  const [candleState, setCandleState] = useState<
+    "UNLIT" | "LIT" | "BLOWING" | "BLOWN"
+  >("UNLIT");
 
   const handleUnlockDigit = (index: number, digitValue: string) => {
     setUnlockedDigits((prev) => {
@@ -5043,7 +5451,7 @@ export default function App() {
         showBunting={screen !== "GAMES" && screen !== "PHOTOBOOTH"}
       />
 
-      <GentlePianoPlayer />
+      <BackgroundMusicPlayer />
 
       {screen === "LOGIN" && (
         <Login
@@ -5062,7 +5470,13 @@ export default function App() {
       )}
 
       {screen === "CELEBRATION" && (
-        <CelebrationPage onOpenPhotobooth={() => setScreen("PHOTOBOOTH")} />
+        <CelebrationPage
+          onOpenPhotobooth={() => setScreen("PHOTOBOOTH")}
+          hasWrittenWishOnce={hasWrittenWishOnce}
+          onMarkWishWritten={() => setHasWrittenWishOnce(true)}
+          candleState={candleState}
+          setCandleState={setCandleState}
+        />
       )}
 
       {screen === "PHOTOBOOTH" && (
