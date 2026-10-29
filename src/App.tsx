@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   OrbitControls,
   Float,
@@ -18,20 +18,24 @@ import {
 // ============================================================================
 /*
   =============================================================================
-  📌 HƯỚNG DẪN THAY NHẠC NỀN (.MP3) VÀ 14 ẢNH TỪ MÁY TÍNH CÁ NHÂN CỦA BẠN:
+  📌 HƯỚNG DẪN THAY 2 BẢN NHẠC NỀN (.MP3) VÀ 14 ẢNH TỪ MÁY TÍNH CÁ NHÂN:
   =============================================================================
   1. Trong thư mục gốc dự án của bạn (ngang hàng với thư mục `src`), có sẵn thư mục `public`.
-  2. Hãy copy file nhạc và 14 bức ảnh từ máy tính của bạn vào thư mục `public`:
-     - Ví dụ nhạc: bỏ vào `public/music/nhac-nen.mp3` -> Điền đường dẫn là `"/music/nhac-nen.mp3"`
-     - Ví dụ ảnh:  bỏ vào `public/photos/anh-1.jpg` ... `anh-14.jpg` -> Điền `"/photos/anh-1.jpg"`,...
+  2. Hãy copy 2 file nhạc (.mp3) và 14 bức ảnh vào thư mục `public`:
+     - Nhạc trang Thử thách: bỏ vào `public/music/nhac-thu-thach.mp3`
+     - Nhạc trang Không gian 3D: bỏ vào `public/music/nhac-sinh-nhat-3d.mp3`
+     - 14 bức ảnh kỷ niệm: bỏ vào `public/photos/anh-1.jpg` ... `anh-14.jpg`
 */
 
 const CONFIG = {
-  // 0. CẤU HÌNH ÂM NHẠC NỀN (Chỉ phát file nhạc của bạn)
+  // 0. CẤU HÌNH 2 BẢN NHẠC NỀN RIÊNG BIỆT (Trang Đăng nhập tự động tắt nhạc)
   audioConfig: {
-    // <--- [CHỖ THAY NHẠC NỀN TỪ MÁY CÁ NHÂN]:
-    // Bỏ file nhạc vào `public/music/nhac-nen.mp3` rồi sửa đường dẫn bên dưới:
-    customMp3Url: "/music/nhac-nen.mp3",
+    // <--- [CHỖ THAY BẢN NHẠC 1 - PHÁT KHI VÀO TRANG THỬ THÁCH GIẢI MÃ]:
+    gamesMp3Url: "/music/nhac-thu-thach.mp3",
+
+    // <--- [CHỖ THAY BẢN NHẠC 2 - PHÁT KHI VÀO KHÔNG GIAN 3D & PHOTOBOOTH]:
+    celebrationMp3Url: "/music/piano.mp3",
+
     defaultVolume: 0.5,
   },
 
@@ -443,81 +447,119 @@ async function sendToGoogleOrWebhook(payload: {
 }
 
 // ============================================================================
-// BỘ PHÁT NHẠC NỀN TỪ FILE AUDIO CÁ NHÂN (ĐÃ XÓA HOÀN TOÀN SYNTH PIANO MẶC ĐỊNH)
+// BỘ PHÁT NHẠC NỀN 2 BẢN RIÊNG BIỆT:
+// - LOGIN: Tắt hoàn toàn (Không phát nhạc)
+// - GAMES: Tự động bật `gamesMp3Url`
+// - CELEBRATION & PHOTOBOOTH: Tự động bật `celebrationMp3Url`
 // ============================================================================
-function BackgroundMusicPlayer() {
+function BackgroundMusicPlayer({
+  screen,
+}: {
+  screen: "LOGIN" | "GAMES" | "CELEBRATION" | "PHOTOBOOTH";
+}) {
   const [isMutedByUser, setIsMutedByUser] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackUrlRef = useRef<string>("");
   const isMutedRef = useRef(false);
 
-  const tryPlayCustomAudio = useCallback(() => {
-    if (isMutedRef.current) return;
-    const url = CONFIG.audioConfig.customMp3Url;
-    if (!url) return;
+  // Xác định bản nhạc cần phát dựa trên màn hình hiện tại
+  const targetTrackUrl = useMemo(() => {
+    if (screen === "LOGIN") return "";
+    if (screen === "GAMES") return CONFIG.audioConfig.gamesMp3Url;
+    return CONFIG.audioConfig.celebrationMp3Url;
+  }, [screen]);
 
-    if (!audioRef.current) {
-      const audio = new Audio(url);
-      audio.loop = true;
-      audio.volume = CONFIG.audioConfig.defaultVolume ?? 0.5;
-      audioRef.current = audio;
+  const syncAndPlayTrack = useCallback((trackUrl: string) => {
+    if (!trackUrl) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      currentTrackUrlRef.current = "";
+      return;
     }
 
-    if (audioRef.current.paused) {
+    // Nếu chuyển sang màn hình có bản nhạc khác -> Đổi source nhạc và phát từ đầu
+    if (!audioRef.current || currentTrackUrlRef.current !== trackUrl) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const nextAudio = new Audio(trackUrl);
+      nextAudio.loop = true;
+      nextAudio.volume = CONFIG.audioConfig.defaultVolume ?? 0.5;
+      audioRef.current = nextAudio;
+      currentTrackUrlRef.current = trackUrl;
+    }
+
+    if (!isMutedRef.current && audioRef.current.paused) {
       audioRef.current.play().catch(() => {
-        // Trình duyệt chờ tương tác đầu tiên để phát nhạc
+        // Nếu trình duyệt di động yêu cầu chạm thêm 1 lần để unlock audio
       });
     }
   }, []);
 
-  const stopCustomAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-  }, []);
+  useEffect(() => {
+    syncAndPlayTrack(targetTrackUrl);
+  }, [targetTrackUrl, syncAndPlayTrack]);
 
   useEffect(() => {
-    tryPlayCustomAudio();
-
     const unlockOnGesture = () => {
-      if (!isMutedRef.current) {
-        tryPlayCustomAudio();
+      if (
+        !isMutedRef.current &&
+        currentTrackUrlRef.current &&
+        audioRef.current?.paused
+      ) {
+        audioRef.current.play().catch(() => {
+          // Ignore play error
+        });
       }
     };
 
     window.addEventListener("pointerdown", unlockOnGesture);
     window.addEventListener("keydown", unlockOnGesture);
-    window.addEventListener("touchstart", unlockOnGesture, { once: true });
+    window.addEventListener("touchstart", unlockOnGesture, { passive: true });
 
     return () => {
       window.removeEventListener("pointerdown", unlockOnGesture);
       window.removeEventListener("keydown", unlockOnGesture);
       window.removeEventListener("touchstart", unlockOnGesture);
-      stopCustomAudio();
     };
-  }, [tryPlayCustomAudio, stopCustomAudio]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  // Ở Trang Đăng nhập không cần nhạc nền nên ẩn luôn nút nhạc
+  if (screen === "LOGIN" || !targetTrackUrl) return null;
 
   const handleToggleButton = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isMutedByUser) {
       isMutedRef.current = true;
       setIsMutedByUser(true);
-      stopCustomAudio();
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
     } else {
       isMutedRef.current = false;
       setIsMutedByUser(false);
-      tryPlayCustomAudio();
+      syncAndPlayTrack(targetTrackUrl);
     }
   };
 
-  const activeSound =
-    !isMutedByUser && Boolean(CONFIG.audioConfig.customMp3Url);
+  const activeSound = !isMutedByUser;
 
   return (
     <button
       type="button"
       onClick={handleToggleButton}
       title={activeSound ? "Nhấn để tắt âm thanh" : "Nhấn để bật lại âm thanh"}
-      className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#FAF8F2]/95 hover:bg-white border border-[#C5D8E6] shadow-[0_8px_25px_rgba(44,68,90,0.14)] text-[#283E52] text-xs font-medium transition-all cursor-pointer group"
+      className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full bg-[#FAF8F2]/95 hover:bg-white border border-[#C5D8E6] shadow-[0_8px_25px_rgba(44,68,90,0.14)] text-[#283E52] text-xs font-medium transition-all cursor-pointer group"
     >
       <span className="relative flex items-center justify-center w-6 h-6 rounded-full bg-[#E6F0F7] text-[#4A7896]">
         {activeSound ? "🎵" : "🔇"}
@@ -526,7 +568,11 @@ function BackgroundMusicPlayer() {
         )}
       </span>
       <span className="hidden sm:inline font-medium">
-        {activeSound ? "Tắt nhạc nền" : "Bật nhạc nền"}
+        {activeSound
+          ? screen === "GAMES"
+            ? "Nhạc Thử Thách: Bật"
+            : "Nhạc Sinh Nhật 3D: Bật"
+          : "Bật nhạc nền"}
       </span>
       {activeSound && (
         <span className="flex items-end gap-0.5 h-3 ml-0.5">
@@ -558,7 +604,7 @@ function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
       <svg
-        className="absolute -top-6 -left-6 w-56 h-56 md:w-72 md:h-72 text-[#5B89A6]/15 transform -rotate-12"
+        className="absolute -top-6 -left-6 w-40 h-40 sm:w-56 sm:h-56 md:w-72 md:h-72 text-[#5B89A6]/15 transform -rotate-12"
         viewBox="0 0 200 200"
         fill="none"
       >
@@ -627,7 +673,7 @@ function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
       </svg>
 
       <svg
-        className="absolute -bottom-8 -right-8 w-64 h-64 md:w-80 md:h-80 text-[#5B89A6]/15 transform rotate-165"
+        className="absolute -bottom-8 -right-8 w-44 h-44 sm:w-64 sm:h-64 md:w-80 md:h-80 text-[#5B89A6]/15 transform rotate-165"
         viewBox="0 0 200 200"
         fill="none"
       >
@@ -690,7 +736,7 @@ function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
       {showBunting && (
         <div className="absolute top-0 left-0 right-0 flex justify-between overflow-hidden opacity-65">
           <svg
-            className="w-full h-16 md:h-20"
+            className="w-full h-12 sm:h-16 md:h-20"
             viewBox="0 0 1200 90"
             preserveAspectRatio="none"
           >
@@ -756,7 +802,7 @@ function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
 }
 
 // ============================================================================
-// COMPONENT 1: TRANG ĐĂNG NHẬP (THEME XANH BẦU TRỜI & ĐẠI DƯƠNG PASTEL)
+// COMPONENT 1: TRANG ĐĂNG NHẬP (TỐI ƯU RESPONSIVE MOBILE & DESKTOP, KHÔNG NHẠC)
 // ============================================================================
 function Login({
   onLoginSuccess,
@@ -790,18 +836,18 @@ function Login({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      <div className="w-96 h-96 bg-[#D2E4F0]/60 rounded-full blur-3xl absolute -top-20 -left-20 pointer-events-none" />
-      <div className="w-96 h-96 bg-[#EFE8D8]/80 rounded-full blur-3xl absolute -bottom-20 -right-20 pointer-events-none" />
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 sm:py-12 relative overflow-hidden">
+      <div className="w-72 h-72 sm:w-96 sm:h-96 bg-[#D2E4F0]/60 rounded-full blur-3xl absolute -top-20 -left-20 pointer-events-none" />
+      <div className="w-72 h-72 sm:w-96 sm:h-96 bg-[#EFE8D8]/80 rounded-full blur-3xl absolute -bottom-20 -right-20 pointer-events-none" />
 
-      <div className="w-full max-w-md bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] rounded-[2.25rem] shadow-[0_24px_60px_rgba(52,82,108,0.1)] p-8 md:p-10 relative z-10 transition-all duration-500">
-        <div className="absolute inset-3 border border-[#E5DEC9]/70 rounded-[1.75rem] pointer-events-none" />
+      <div className="w-full max-w-md bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] rounded-[2rem] sm:rounded-[2.25rem] shadow-[0_24px_60px_rgba(52,82,108,0.1)] p-6 sm:p-8 md:p-10 relative z-10 transition-all duration-500">
+        <div className="absolute inset-2.5 sm:inset-3 border border-[#E5DEC9]/70 rounded-[1.5rem] sm:rounded-[1.75rem] pointer-events-none" />
 
-        <div className="text-center mb-7 relative">
-          <div className="relative inline-flex items-center justify-center mb-3">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#6B9BB8] to-[#487594] shadow-[0_6px_18px_rgba(72,117,148,0.35)] flex items-center justify-center border-2 border-[#E6DFC8]">
-              <div className="w-12 h-12 rounded-full border border-dashed border-[#FAF8F2]/60 flex items-center justify-center">
-                <span className="text-2xl select-none">🌊</span>
+        <div className="text-center mb-6 sm:mb-7 relative">
+          <div className="relative inline-flex items-center justify-center mb-2.5 sm:mb-3">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#6B9BB8] to-[#487594] shadow-[0_6px_18px_rgba(72,117,148,0.35)] flex items-center justify-center border-2 border-[#E6DFC8]">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-dashed border-[#FAF8F2]/60 flex items-center justify-center">
+                <span className="text-xl sm:text-2xl select-none">🌊</span>
               </div>
             </div>
             <span className="absolute -right-3 -top-1 text-[#C8A96E] text-sm animate-pulse">
@@ -813,24 +859,24 @@ function Login({
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="h-[1px] w-8 bg-[#C4D6E3]" />
-            <span className="text-[11px] uppercase tracking-[0.25em] text-[#5C7F96] font-semibold">
+            <span className="h-[1px] w-6 sm:w-8 bg-[#C4D6E3]" />
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-[#5C7F96] font-semibold">
               Thiệp Mời Đặc Biệt
             </span>
-            <span className="h-[1px] w-8 bg-[#C4D6E3]" />
+            <span className="h-[1px] w-6 sm:w-8 bg-[#C4D6E3]" />
           </div>
 
-          <h1 className="font-serif-vn text-2xl md:text-3xl font-semibold text-[#283E52] tracking-tight">
+          <h1 className="font-serif-vn text-2xl sm:text-3xl font-semibold text-[#283E52] tracking-tight">
             Cánh Cửa Sinh Nhật
           </h1>
-          <p className="text-sm text-[#5E768A] mt-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#5E768A] mt-1.5 sm:mt-2 leading-relaxed px-2">
             Nhập mã kỷ niệm để bước vào không gian bình yên của bầu trời và đại
             dương
           </p>
         </div>
 
         {hasAllDigits && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-[#EAF2F8] border border-[#B5D0E3] text-center text-xs text-[#2C5270] flex items-center justify-center gap-2 shadow-sm">
+          <div className="mb-5 p-3 rounded-2xl bg-[#EAF2F8] border border-[#B5D0E3] text-center text-xs text-[#2C5270] flex flex-wrap items-center justify-center gap-2 shadow-sm">
             <span>✨ Bạn đã thu thập đủ mật khẩu:</span>
             <strong className="tracking-widest text-sm font-bold bg-white px-2.5 py-0.5 rounded-lg border border-[#B5D0E3]">
               {suggestedPass}
@@ -838,50 +884,55 @@ function Login({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 sm:space-y-5 relative z-10"
+        >
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs uppercase tracking-wider text-[#546E82] font-semibold">
-                Tên đăng nhập (Username)
+            <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
+              <label className="block text-[11px] sm:text-xs uppercase tracking-wider text-[#546E82] font-semibold">
+                Tên đăng nhập
               </label>
-              <span className="text-xs text-[#487594] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-medium border border-[#C8DCEB]">
+              <span className="text-[11px] sm:text-xs text-[#487594] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-medium border border-[#C8DCEB]">
                 💡 Gợi ý: {CONFIG.auth.usernameHint}
               </span>
             </div>
             <input
               type="text"
+              inputMode="numeric"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Nhập 4 chữ số..."
-              className="w-full px-4 py-3 rounded-xl bg-white/95 border border-[#D2E0EB] text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] focus:ring-2 focus:ring-[#5B89A6]/20 transition-all text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-white/95 border border-[#D2E0EB] text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] focus:ring-2 focus:ring-[#5B89A6]/20 transition-all text-base sm:text-sm"
             />
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs uppercase tracking-wider text-[#546E82] font-semibold">
-                Mật khẩu (Password)
+            <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
+              <label className="block text-[11px] sm:text-xs uppercase tracking-wider text-[#546E82] font-semibold">
+                Mật khẩu
               </label>
-              <span className="text-xs text-[#487594] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-medium border border-[#C8DCEB]">
+              <span className="text-[11px] sm:text-xs text-[#487594] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-medium border border-[#C8DCEB]">
                 💡 Gợi ý: {CONFIG.auth.passwordHint}
               </span>
             </div>
             <input
               type="password"
+              inputMode="numeric"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Nhập mật khẩu 4 chữ số..."
-              className="w-full px-4 py-3 rounded-xl bg-white/95 border border-[#D2E0EB] text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] focus:ring-2 focus:ring-[#5B89A6]/20 transition-all text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-white/95 border border-[#D2E0EB] text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] focus:ring-2 focus:ring-[#5B89A6]/20 transition-all text-base sm:text-sm"
             />
           </div>
 
           {errorMsg && (
-            <div className="p-3.5 rounded-xl bg-[#FDF2F2] border border-[#F2CACA] text-[#A64444] text-xs leading-relaxed text-center animate-fadeIn">
+            <div className="p-3 rounded-xl bg-[#FDF2F2] border border-[#F2CACA] text-[#A64444] text-xs leading-relaxed text-center animate-fadeIn">
               {errorMsg}
             </div>
           )}
 
-          <div className="pt-2 flex flex-col gap-3">
+          <div className="pt-1.5 flex flex-col gap-2.5 sm:gap-3">
             <button
               type="submit"
               className="w-full py-3.5 px-6 rounded-xl bg-[#5B89A6] hover:bg-[#487594] active:scale-[0.99] text-white font-medium text-sm shadow-[0_8px_20px_rgba(91,137,166,0.28)] transition-all cursor-pointer flex items-center justify-center gap-2"
@@ -905,7 +956,7 @@ function Login({
 }
 
 // ============================================================================
-// MINI-GAME 2A: FLAPPY BIRD (ĐỘ KHÓ CAO & KHÓA CỨNG TẠI 49 ĐIỂM)
+// MINI-GAME 2A: FLAPPY BIRD (HỖ TRỢ CHẠM CẢM ỨNG ĐIỆN THOẠI & PHÍM SPACE)
 // ============================================================================
 interface FlappyPipe {
   x: number;
@@ -1228,8 +1279,8 @@ function FlappyBirdGame({
   }, [status, targetScore, pointsPerPipe]);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="flex items-center justify-between w-full max-w-[400px] mb-3 px-1">
+    <div className="flex flex-col items-center w-full">
+      <div className="flex flex-wrap items-center justify-between gap-2 w-full max-w-[400px] mb-3 px-1">
         <span className="text-xs font-medium text-[#546E82]">
           Mục tiêu:{" "}
           <strong className="text-[#283E52]">{targetScore} cột</strong> (+
@@ -1241,7 +1292,7 @@ function FlappyBirdGame({
               Kỷ lục: <strong>{bestScore}/50</strong>
             </span>
           )}
-          <span className="text-sm font-bold text-[#487594] bg-[#E3EFF7] px-3 py-1 rounded-full border border-[#B5D0E3]">
+          <span className="text-xs sm:text-sm font-bold text-[#487594] bg-[#E3EFF7] px-3 py-1 rounded-full border border-[#B5D0E3]">
             Điểm: {score} / {targetScore}
           </span>
         </div>
@@ -1253,13 +1304,13 @@ function FlappyBirdGame({
           e.preventDefault();
           jump();
         }}
-        className="relative rounded-2xl overflow-hidden border-2 border-[#C2D8E8] shadow-inner cursor-pointer select-none bg-[#E6F1F8]"
+        className="relative w-full max-w-[400px] rounded-2xl overflow-hidden border-2 border-[#C2D8E8] shadow-inner cursor-pointer select-none bg-[#E6F1F8] touch-none"
       >
         <canvas
           ref={canvasRef}
           width={400}
           height={260}
-          className="block max-w-full h-auto"
+          className="block w-full h-auto"
         />
 
         {status === "IDLE" && (
@@ -1286,24 +1337,24 @@ function FlappyBirdGame({
         )}
 
         {status === "READY" && (
-          <div className="absolute inset-0 bg-[#283E52]/10 flex flex-col items-center justify-end pb-6 pointer-events-none">
+          <div className="absolute inset-0 bg-[#283E52]/10 flex flex-col items-center justify-end pb-5 pointer-events-none px-3 text-center">
             <div className="bg-white/95 px-4 py-2 rounded-full shadow-sm border border-[#C2D8E8] animate-bounce">
-              <p className="text-xs font-semibold text-[#3B6480]">
-                👆 Nhấp chuột hoặc nhấn phím Space để bay!
+              <p className="text-[11px] sm:text-xs font-semibold text-[#3B6480]">
+                👆 Chạm vào màn hình hoặc nhấn phím Space để bay!
               </p>
             </div>
           </div>
         )}
 
         {status === "GAMEOVER" && (
-          <div className="absolute inset-0 bg-[#FAF8F2]/95 backdrop-blur-[3px] flex flex-col items-center justify-center p-5 text-center animate-fadeIn">
+          <div className="absolute inset-0 bg-[#FAF8F2]/95 backdrop-blur-[3px] flex flex-col items-center justify-center p-4 sm:p-5 text-center animate-fadeIn">
             {(lastDeathScore ?? 0) >= CONFIG.game2.flappyTrapScore ? (
               <>
-                <span className="text-2xl mb-1">😈🔒</span>
-                <p className="text-sm font-bold text-[#B84A4A] mb-1">
+                <span className="text-xl sm:text-2xl mb-1">😈🔒</span>
+                <p className="text-xs sm:text-sm font-bold text-[#B84A4A] mb-1">
                   49/50 ĐIỂM — CỘT THỨ 50 ĐÃ BỊ KHÓA KÍN!
                 </p>
-                <p className="text-xs text-[#546E82] mb-3 max-w-xs leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-[#546E82] mb-3 max-w-xs leading-relaxed">
                   Haha! Bạn bay siêu đỉnh nhưng hệ thống đã cố tình{" "}
                   <strong>khóa ở điểm 49</strong> rồi, không ai vượt qua được
                   cột thứ 50 đâu! Chọn <strong>&ldquo;Thật&rdquo;</strong> để mở
@@ -1312,10 +1363,10 @@ function FlappyBirdGame({
               </>
             ) : (
               <>
-                <p className="text-sm font-bold text-[#B85656] mb-1">
+                <p className="text-xs sm:text-sm font-bold text-[#B85656] mb-1">
                   Va chạm mất rồi! ({lastDeathScore ?? 0}/{targetScore} cột)
                 </p>
-                <p className="text-xs text-[#546E82] mb-3 max-w-xs">
+                <p className="text-[11px] sm:text-xs text-[#546E82] mb-3 max-w-xs">
                   {(lastDeathScore ?? 0) >= 20
                     ? "Càng về cuối cột càng hẹp và nhấp nhô khó lường! Liệu có ai chạm nổi mốc 50?"
                     : "Cẩn thận nhịp vỗ cánh nhé, tốc độ sẽ tăng dần theo điểm số đấy!"}
@@ -1323,14 +1374,14 @@ function FlappyBirdGame({
               </>
             )}
 
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   startGame();
                 }}
-                className="px-4 py-2 rounded-xl bg-[#E6F0F7] hover:bg-[#D4E5F2] text-[#283E52] text-xs font-semibold transition-all cursor-pointer border border-[#B5D0E3]"
+                className="px-3.5 py-2 rounded-xl bg-[#E6F0F7] hover:bg-[#D4E5F2] text-[#283E52] text-xs font-semibold transition-all cursor-pointer border border-[#B5D0E3]"
               >
                 Thử lại lần nữa 🔄
               </button>
@@ -1342,9 +1393,9 @@ function FlappyBirdGame({
                     e.stopPropagation();
                     onSwitchToTruth();
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
                 >
-                  Đầu hàng & Chuyển sang &ldquo;Thật&rdquo; 💌
+                  Đầu hàng & Chọn &ldquo;Thật&rdquo; 💌
                 </button>
               )}
             </div>
@@ -1352,17 +1403,17 @@ function FlappyBirdGame({
         )}
       </div>
 
-      <p className="text-[11px] text-[#5E788C] mt-2 text-center">
+      <p className="text-[11px] text-[#5E788C] mt-2 text-center px-2">
         {deathsAt49 > 0
           ? "🤭 Bí mật nhỏ: Chế độ Thách bị khóa ở 49 điểm, hãy bấm sang nút 'Thật' ở trên để lấy mật khẩu nhé!"
-          : "Mẹo: Nhấp chuột hoặc nhấn phím Space nhịp nhàng để giữ độ cao ổn định."}
+          : "Mẹo: Chạm nhẹ vào khung trò chơi hoặc nhấn phím Space nhịp nhàng để giữ độ cao."}
       </p>
     </div>
   );
 }
 
 // ============================================================================
-// COMPONENT 2: TRANG GIẢI MÃ (MÀN 1 & MÀN 3 TỰ ĐỘNG RESET KHI CHỌN SAI)
+// COMPONENT 2: TRANG GIẢI MÃ (RESPONSIVE CHO CẢ ĐIỆN THOẠI & MÁY TÍNH)
 // ============================================================================
 function GameBoard({
   unlockedDigits,
@@ -1520,32 +1571,32 @@ function GameBoard({
   const isCurrentStepDone = unlockedDigits[currentStep] !== null;
 
   return (
-    <div className="min-h-screen pb-20 relative z-10">
-      <header className="sticky top-0 z-30 bg-[#FAF8F2]/90 backdrop-blur-md border-b border-[#D8E5EE] shadow-sm">
-        <div className="max-w-3xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+    <div className="min-h-[100dvh] pb-24 relative z-10">
+      <header className="sticky top-0 z-30 bg-[#FAF8F2]/95 backdrop-blur-md border-b border-[#D8E5EE] shadow-sm">
+        <div className="max-w-3xl mx-auto px-3.5 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onBackToLogin}
-              className="text-xs font-medium text-[#486880] hover:text-[#283E52] px-3 py-1.5 rounded-lg bg-[#EAF1F6] hover:bg-[#DAE7F0] transition-colors cursor-pointer"
+              className="text-xs font-medium text-[#486880] hover:text-[#283E52] px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#EAF1F6] hover:bg-[#DAE7F0] transition-colors cursor-pointer"
             >
-              ← Trang đăng nhập
+              ← Đăng nhập
             </button>
-            <span className="text-xs text-[#647F94] hidden sm:inline">
+            <span className="text-xs text-[#647F94] hidden md:inline">
               Hoàn thành lần lượt 4 thử thách để tìm mật khẩu
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs uppercase tracking-wider font-semibold text-[#486880]">
-              Mật khẩu của bạn:
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-[#486880]">
+              Mật khẩu:
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {unlockedDigits.map((digit, idx) => (
                 <div
                   key={idx}
                   onClick={() => setCurrentStep(idx)}
                   title={`Chuyển tới Màn ${idx + 1}`}
-                  className={`w-9 h-10 rounded-xl flex items-center justify-center font-bold text-base transition-all duration-300 cursor-pointer ${
+                  className={`w-8 h-9 sm:w-9 sm:h-10 rounded-xl flex items-center justify-center font-bold text-sm sm:text-base transition-all duration-300 cursor-pointer ${
                     digit !== null
                       ? "bg-[#5B89A6] text-white shadow-sm scale-105"
                       : currentStep === idx
@@ -1561,9 +1612,10 @@ function GameBoard({
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pt-7">
-        <div className="mb-7">
-          <div className="grid grid-cols-4 gap-2.5">
+      <main className="max-w-2xl mx-auto px-3.5 sm:px-4 pt-5 sm:pt-7">
+        {/* Lưới 2 cột trên điện thoại, 4 cột trên máy tính để không bị tràn chữ */}
+        <div className="mb-5 sm:mb-7">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
             {[
               { idx: 0, label: "Màn 1: Trắc nghiệm" },
               { idx: 1, label: "Màn 2: Thật / Thách" },
@@ -1600,11 +1652,11 @@ function GameBoard({
         </div>
 
         {allUnlocked && (
-          <div className="mb-7 p-6 rounded-3xl bg-gradient-to-r from-[#E3EFF7] via-[#F5F2E6] to-[#E6F0F7] border border-[#B5D0E3] shadow-md text-center animate-fadeIn">
+          <div className="mb-6 p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-[#E3EFF7] via-[#F5F2E6] to-[#E6F0F7] border border-[#B5D0E3] shadow-md text-center animate-fadeIn">
             <p className="text-xs uppercase tracking-widest text-[#487594] font-semibold mb-1">
               🎉 Chúc mừng bạn đã giải mã hoàn tất
             </p>
-            <h2 className="font-serif-vn text-2xl font-bold text-[#283E52] mb-3">
+            <h2 className="font-serif-vn text-xl sm:text-2xl font-bold text-[#283E52] mb-3">
               Mật khẩu hoàn chỉnh:{" "}
               <span className="tracking-widest text-[#487594]">
                 {unlockedDigits.join("")}
@@ -1612,17 +1664,17 @@ function GameBoard({
             </h2>
             <button
               onClick={onBackToLogin}
-              className="px-8 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white text-sm font-medium shadow-md transition-all cursor-pointer"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white text-sm font-medium shadow-md transition-all cursor-pointer"
             >
               Quay lại trang Đăng nhập ngay →
             </button>
           </div>
         )}
 
-        <div className="bg-[#FAF8F2]/95 backdrop-blur-md border border-[#D8E5EE] rounded-3xl p-6 md:p-8 shadow-[0_16px_40px_rgba(52,82,108,0.07)] transition-all">
+        <div className="bg-[#FAF8F2]/95 backdrop-blur-md border border-[#D8E5EE] rounded-3xl p-5 sm:p-6 md:p-8 shadow-[0_16px_40px_rgba(52,82,108,0.07)] transition-all">
           {currentStep === 0 && (
             <section>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#487594] bg-[#E6F0F7] px-3 py-1 rounded-full">
                   Trò chơi 1 / 4 • Trắc nghiệm
                 </span>
@@ -1633,14 +1685,14 @@ function GameBoard({
                 )}
               </div>
 
-              <h3 className="font-serif-vn text-xl font-semibold text-[#283E52] mb-2">
+              <h3 className="font-serif-vn text-lg sm:text-xl font-semibold text-[#283E52] mb-2">
                 Câu hỏi mở màn
               </h3>
-              <p className="text-sm text-[#4A6275] mb-6 leading-relaxed">
+              <p className="text-sm text-[#4A6275] mb-5 sm:mb-6 leading-relaxed">
                 {CONFIG.game1.question}
               </p>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 {CONFIG.game1.options.map((opt) => {
                   const isCorrectOpt = opt.id === CONFIG.game1.correctAnswer;
                   const isChosen = g1Selected === opt.id;
@@ -1675,7 +1727,7 @@ function GameBoard({
                       disabled={
                         unlockedDigits[0] !== null || g1Status === "WRONG"
                       }
-                      className={`w-full text-left p-4 rounded-2xl border text-sm transition-all flex items-start gap-3 cursor-pointer ${optionStyle}`}
+                      className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border text-xs sm:text-sm transition-all flex items-start gap-3 cursor-pointer ${optionStyle}`}
                     >
                       <span
                         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 transition-colors ${badgeStyle}`}
@@ -1713,7 +1765,7 @@ function GameBoard({
 
           {currentStep === 1 && (
             <section>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#487594] bg-[#E6F0F7] px-3 py-1 rounded-full">
                   Trò chơi 2 / 4 • Truth or Dare
                 </span>
@@ -1724,20 +1776,20 @@ function GameBoard({
                 )}
               </div>
 
-              <h3 className="font-serif-vn text-xl font-semibold text-[#283E52] mb-2">
+              <h3 className="font-serif-vn text-lg sm:text-xl font-semibold text-[#283E52] mb-2">
                 Thật hay Thách?
               </h3>
-              <p className="text-sm text-[#4A6275] mb-5 leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#4A6275] mb-5 leading-relaxed">
                 Chọn <strong>Thật</strong> để trả lời 7 câu hỏi tâm sự, hoặc
                 chọn <strong>Thách</strong> để vượt qua 50 chướng ngại vật
                 Flappy Bird!
               </p>
 
-              <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-5 sm:mb-6">
                 <button
                   type="button"
                   onClick={() => setG2Mode("TRUTH")}
-                  className={`py-3 px-4 rounded-2xl text-sm font-medium border transition-all cursor-pointer ${
+                  className={`py-3 px-4 rounded-2xl text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
                     g2Mode === "TRUTH"
                       ? "bg-[#5B89A6] text-white border-[#5B89A6] shadow-sm"
                       : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#5B89A6]"
@@ -1748,7 +1800,7 @@ function GameBoard({
                 <button
                   type="button"
                   onClick={() => setG2Mode("DARE")}
-                  className={`py-3 px-4 rounded-2xl text-sm font-medium border transition-all cursor-pointer ${
+                  className={`py-3 px-4 rounded-2xl text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
                     g2Mode === "DARE"
                       ? "bg-[#3A627D] text-white border-[#3A627D] shadow-sm"
                       : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#5B89A6]"
@@ -1759,7 +1811,7 @@ function GameBoard({
               </div>
 
               {g2Mode === "DARE" && (
-                <div className="bg-white p-4 rounded-2xl border border-[#D8E5EE]">
+                <div className="bg-white p-3 sm:p-4 rounded-2xl border border-[#D8E5EE]">
                   <FlappyBirdGame
                     targetScore={CONFIG.game2.flappyTargetScore}
                     pointsPerPipe={CONFIG.game2.flappyPointsPerPipe}
@@ -1771,7 +1823,7 @@ function GameBoard({
               {g2Mode === "TRUTH" && (
                 <form
                   onSubmit={handleTruthSubmit}
-                  className="space-y-3.5 bg-white p-5 rounded-2xl border border-[#D8E5EE] max-h-[420px] overflow-y-auto custom-scrollbar"
+                  className="space-y-3.5 bg-white p-4 sm:p-5 rounded-2xl border border-[#D8E5EE] max-h-[55vh] sm:max-h-[420px] overflow-y-auto custom-scrollbar"
                 >
                   {CONFIG.game2.truthQuestions.map((q, idx) => (
                     <div key={idx}>
@@ -1788,7 +1840,7 @@ function GameBoard({
                           setTruthAnswers(next);
                         }}
                         placeholder="Viết câu trả lời của bạn..."
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF8F2] border border-[#D8E5EE] text-xs text-[#283E52] focus:outline-none focus:border-[#5B89A6]"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF8F2] border border-[#D8E5EE] text-sm sm:text-xs text-[#283E52] focus:outline-none focus:border-[#5B89A6]"
                       />
                     </div>
                   ))}
@@ -1822,7 +1874,7 @@ function GameBoard({
 
           {currentStep === 2 && (
             <section>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#487594] bg-[#E6F0F7] px-3 py-1 rounded-full">
                   Trò chơi 3 / 4 • Ai Là Triệu Phú
                 </span>
@@ -1837,7 +1889,7 @@ function GameBoard({
                 )}
               </div>
 
-              <h3 className="font-serif-vn text-xl font-semibold text-[#283E52] mb-1">
+              <h3 className="font-serif-vn text-lg sm:text-xl font-semibold text-[#283E52] mb-1">
                 Chế độ Sinh Tồn 10 Câu Liên Tiếp
               </h3>
               <p className="text-xs text-[#546E82] mb-4">
@@ -1860,7 +1912,7 @@ function GameBoard({
               </div>
 
               {unlockedDigits[2] === null && g3Questions[g3Index] && (
-                <div className="bg-white p-5 rounded-2xl border border-[#D8E5EE]">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#D8E5EE]">
                   <p className="text-xs font-semibold text-[#487594] mb-1">
                     Câu hỏi {g3Index + 1} / {CONFIG.game3.targetStreak}:
                   </p>
@@ -1896,7 +1948,7 @@ function GameBoard({
                           key={idx}
                           disabled={g3AnswerState !== "IDLE"}
                           onClick={() => handleGame3Answer(idx)}
-                          className={`w-full text-left px-4 py-3 rounded-xl border text-xs transition-all flex items-center gap-3 cursor-pointer ${btnClass}`}
+                          className={`w-full text-left px-3.5 sm:px-4 py-3 rounded-xl border text-xs transition-all flex items-center gap-3 cursor-pointer ${btnClass}`}
                         >
                           <span
                             className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${badgeClass}`}
@@ -1938,7 +1990,7 @@ function GameBoard({
 
           {currentStep === 3 && (
             <section>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#487594] bg-[#E6F0F7] px-3 py-1 rounded-full">
                   Trò chơi 4 / 4 • Giải Toán
                 </span>
@@ -1949,30 +2001,34 @@ function GameBoard({
                 )}
               </div>
 
-              <h3 className="font-serif-vn text-xl font-semibold text-[#283E52] mb-2">
+              <h3 className="font-serif-vn text-lg sm:text-xl font-semibold text-[#283E52] mb-2">
                 Thử thách tính nhẩm cuối cùng
               </h3>
-              <div className="p-5 rounded-2xl bg-white border border-[#D8E5EE] mb-5">
+              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#D8E5EE] mb-5">
                 <p className="text-sm text-[#334B5E] leading-relaxed font-medium">
                   {CONFIG.game4.mathQuestion}
                 </p>
               </div>
 
-              <form onSubmit={handleMathSubmit} className="flex gap-3">
+              <form
+                onSubmit={handleMathSubmit}
+                className="flex flex-col sm:flex-row gap-2.5 sm:gap-3"
+              >
                 <input
                   type="text"
+                  inputMode="numeric"
                   disabled={unlockedDigits[3] !== null}
                   value={mathInput}
                   onChange={(e) => setMathInput(e.target.value)}
                   placeholder="Nhập đáp án của bạn..."
-                  className="flex-1 px-4 py-3 rounded-xl bg-white border border-[#D8E5EE] text-sm text-[#283E52] focus:outline-none focus:border-[#5B89A6]"
+                  className="flex-1 px-4 py-3 rounded-xl bg-white border border-[#D8E5EE] text-base sm:text-sm text-[#283E52] focus:outline-none focus:border-[#5B89A6]"
                 />
                 <button
                   type="submit"
                   disabled={unlockedDigits[3] !== null || !hasMathText}
                   className={`px-6 py-3 rounded-xl text-xs font-semibold transition-all ${
                     unlockedDigits[3] === null && hasMathText
-                      ? "bg-[#5B89A6] hover:bg-[#487594] text-white shadow-[0_6px_16px_rgba(91,137,166,0.3)] cursor-pointer scale-[1.02]"
+                      ? "bg-[#5B89A6] hover:bg-[#487594] text-white shadow-[0_6px_16px_rgba(91,137,166,0.3)] cursor-pointer sm:scale-[1.02]"
                       : "bg-[#E6E3D8] text-[#9EA8A1] cursor-not-allowed"
                   }`}
                 >
@@ -1993,12 +2049,12 @@ function GameBoard({
             </section>
           )}
 
-          <div className="mt-7 pt-5 border-t border-[#E2ECF2] flex items-center justify-between">
+          <div className="mt-7 pt-5 border-t border-[#E2ECF2] flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               disabled={currentStep === 0}
               onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
-              className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
                 currentStep === 0
                   ? "text-[#B5C2CC] cursor-not-allowed"
                   : "text-[#486880] hover:bg-[#EAF1F6] cursor-pointer"
@@ -2012,24 +2068,24 @@ function GameBoard({
                 type="button"
                 disabled={!isCurrentStepDone}
                 onClick={() => setCurrentStep((s) => Math.min(3, s + 1))}
-                className={`px-6 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isCurrentStepDone
                     ? "bg-[#283E52] hover:bg-[#1D2F3F] text-white shadow-sm cursor-pointer animate-bounce"
                     : "bg-[#E8E5DC] text-[#A2B0BA] cursor-not-allowed"
                 }`}
               >
                 {isCurrentStepDone
-                  ? "Tiếp tục sang Trò chơi tiếp theo →"
-                  : "Hoàn thành màn này để mở màn tiếp theo"}
+                  ? "Sang Trò chơi tiếp theo →"
+                  : "Hoàn thành để mở tiếp"}
               </button>
             ) : (
               allUnlocked && (
                 <button
                   type="button"
                   onClick={onBackToLogin}
-                  className="px-6 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold shadow-sm cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold shadow-sm cursor-pointer"
                 >
-                  Dùng mật khẩu đăng nhập ngay →
+                  Dùng mật khẩu đăng nhập →
                 </button>
               )
             )}
@@ -2039,14 +2095,14 @@ function GameBoard({
 
       {showTeaseModal && (
         <div className="fixed inset-0 z-50 bg-[#1B2B38]/45 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#FAF8F2] border border-[#D8E5EE] rounded-3xl max-w-md w-full p-7 shadow-2xl text-center animate-fadeIn">
+          <div className="bg-[#FAF8F2] border border-[#D8E5EE] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-center animate-fadeIn">
             <div className="w-12 h-12 rounded-2xl bg-[#E6F0F7] flex items-center justify-center mx-auto mb-3 text-2xl">
               😜
             </div>
-            <h4 className="font-serif-vn text-xl font-bold text-[#283E52] mb-2">
+            <h4 className="font-serif-vn text-lg sm:text-xl font-bold text-[#283E52] mb-2">
               {CONFIG.game4.teasePopupTitle}
             </h4>
-            <p className="text-sm text-[#4A6275] leading-relaxed mb-5">
+            <p className="text-xs sm:text-sm text-[#4A6275] leading-relaxed mb-5">
               {CONFIG.game4.teasePopupMessage}
             </p>
             <div className="p-3 rounded-xl bg-white border border-[#D8E5EE] text-xs text-[#283E52] mb-5">
@@ -2071,7 +2127,7 @@ function GameBoard({
 }
 
 // ============================================================================
-// COMPONENT 3A: 14 BỨC ẢNH BÓNG BAY XUẤT HIỆN NGẪU NHIÊN LUÂN PHIÊN NHAU
+// COMPONENT 3A: 14 BỨC ẢNH BÓNG BAY NGẪU NHIÊN LUÂN PHIÊN (RESPONSIVE MOBILE/DESKTOP)
 // ============================================================================
 const BALLOON_COLORS = [
   "#93BCD6",
@@ -2096,7 +2152,7 @@ interface FloatingSlot {
 
 function createInitialBalloonSlots(): FloatingSlot[] {
   const photosCount = CONFIG.celebration.balloonPhotos.length; // 14 ảnh
-  const baseLanes = [4, 13, 22, 32, 41, 51, 60, 70, 79, 88];
+  const baseLanes = [3, 12, 22, 31, 41, 50, 60, 69, 78, 86];
   return baseLanes.map((baseLeft, idx) => ({
     slotId: idx,
     photoIndex: idx % photosCount,
@@ -2120,7 +2176,7 @@ function BalloonsBackground() {
         if (slot.slotId !== slotId) return slot;
         const randomStep = 1 + Math.floor(Math.random() * (photosCount - 1));
         const nextPhotoIdx = (slot.photoIndex + randomStep) % photosCount;
-        const nextLeft = Math.floor(3 + Math.random() * 85);
+        const nextLeft = Math.floor(2 + Math.random() * 82);
         const nextColor =
           BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
         const nextTilt = (Math.random() - 0.5) * 6;
@@ -2151,11 +2207,11 @@ function BalloonsBackground() {
               animationDuration: `${slot.durationSec}s`,
               animationDelay: `${slot.delaySec}s`,
             }}
-            className="balloon-float absolute -bottom-72 flex flex-col items-center opacity-90 transition-[left] duration-700"
+            className="balloon-float absolute -bottom-72 flex flex-col items-center opacity-90 transition-[left] duration-700 scale-[0.78] sm:scale-100 origin-bottom"
           >
             <div
               style={{ backgroundColor: slot.color }}
-              className="w-16 h-20 rounded-[50%_50%_48%_48%/55%_55%_45%_45%] shadow-[inset_-6px_-6px_14px_rgba(0,0,0,0.06)] relative flex items-center justify-center border border-white/50"
+              className="w-14 h-18 sm:w-16 sm:h-20 rounded-[50%_50%_48%_48%/55%_55%_45%_45%] shadow-[inset_-6px_-6px_14px_rgba(0,0,0,0.06)] relative flex items-center justify-center border border-white/50"
             >
               <div className="w-3 h-6 bg-white/45 rounded-full absolute top-3 left-3 rotate-[-25deg]" />
               <div
@@ -2164,14 +2220,14 @@ function BalloonsBackground() {
               />
             </div>
 
-            <div className="w-[1px] h-10 bg-[#95AFC2]/70" />
+            <div className="w-[1px] h-8 sm:h-10 bg-[#95AFC2]/70" />
 
             <div
               style={{ transform: `rotate(${slot.tiltDeg}deg)` }}
-              className="bg-[#FAF8F2] p-2 pb-3 rounded-xl shadow-[0_10px_25px_rgba(40,62,82,0.1)] border border-[#D8E5EE] w-28"
+              className="bg-[#FAF8F2] p-1.5 sm:p-2 pb-2.5 sm:pb-3 rounded-xl shadow-[0_10px_25px_rgba(40,62,82,0.1)] border border-[#D8E5EE] w-24 sm:w-28"
             >
-              <div className="w-8 h-2.5 bg-[#CFE2EE]/80 mx-auto -mt-3 mb-1 rounded-sm transform rotate-3" />
-              <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#EAF1F6]">
+              <div className="w-7 sm:w-8 h-2.5 bg-[#CFE2EE]/80 mx-auto -mt-2.5 sm:-mt-3 mb-1 rounded-sm transform rotate-3" />
+              <div className="w-21 h-21 sm:w-24 sm:h-24 mx-auto rounded-lg overflow-hidden bg-[#EAF1F6]">
                 <img
                   src={photo.url}
                   alt={photo.caption}
@@ -2179,7 +2235,7 @@ function BalloonsBackground() {
                   loading="lazy"
                 />
               </div>
-              <p className="text-[10px] text-center text-[#466075] mt-1.5 font-medium truncate">
+              <p className="text-[9px] sm:text-[10px] text-center text-[#466075] mt-1.5 font-medium truncate">
                 {photo.caption}
               </p>
             </div>
@@ -2191,7 +2247,7 @@ function BalloonsBackground() {
 }
 
 // ============================================================================
-// COMPONENT 3B: BÁNH SINH NHẬT 3D (SẮC XANH BẦU TRỜI & KEM VANI)
+// COMPONENT 3B: BÁNH SINH NHẬT 3D (TỰ ĐỘNG CĂN CHỈNH TỶ LỆ TRÊN MÀN HÌNH DỌC ĐIỆN THOẠI)
 // ============================================================================
 interface ThreeMeshGroupLike {
   visible: boolean;
@@ -2361,6 +2417,9 @@ function BirthdayCakeModel({
   candleState: "UNLIT" | "LIT" | "BLOWING" | "BLOWN";
 }) {
   const groupRef = useRef<{ rotation: { y: number } } | null>(null);
+  const { viewport } = useThree();
+  // Tự động thu gọn nhẹ tỷ lệ bánh kem khi xem trên màn hình dọc của điện thoại
+  const responsiveScale = Math.min(1, Math.max(0.76, viewport.width / 3.4));
 
   const candlePositions: Array<[number, number, number]> = [
     [0, 0.95, 0],
@@ -2385,7 +2444,11 @@ function BirthdayCakeModel({
 
   return (
     <Float speed={1.4} rotationIntensity={0.08} floatIntensity={0.25}>
-      <group ref={groupRef as never} position={[0, -0.35, 0]}>
+      <group
+        ref={groupRef as never}
+        position={[0, -0.35, 0]}
+        scale={responsiveScale}
+      >
         <mesh position={[0, -0.35, 0]} receiveShadow>
           <cylinderGeometry args={[1.6, 1.42, 0.1, 48]} />
           <meshStandardMaterial
@@ -2445,7 +2508,7 @@ function BirthdayCakeModel({
 }
 
 // ============================================================================
-// COMPONENT 3C: LÁ THƯ HIỆN LÊN VÀ MỞ RA NHƯ MỘT TRANG SÁCH (3D BOOK ANIMATION)
+// COMPONENT 3C: LÁ THƯ HIỆN LÊN VÀ MỞ RA NHƯ MỘT TRANG SÁCH (RESPONSIVE MOBILE)
 // ============================================================================
 function BookLetterInner({ onClose }: { onClose: () => void }) {
   const [bookOpened, setBookOpened] = useState(false);
@@ -2456,69 +2519,69 @@ function BookLetterInner({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#182633]/45 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-40 bg-[#182633]/45 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
       <div className="book-perspective w-full max-w-2xl">
         <div
-          className={`relative bg-[#FAF8F2] border-2 border-[#CAD8E3] rounded-r-3xl rounded-l-xl shadow-[0_30px_80px_rgba(25,42,58,0.38)] overflow-hidden transition-all duration-1000 ${
+          className={`relative bg-[#FAF8F2] border-2 border-[#CAD8E3] rounded-r-2xl sm:rounded-r-3xl rounded-l-xl shadow-[0_30px_80px_rgba(25,42,58,0.38)] overflow-hidden transition-all duration-1000 ${
             bookOpened ? "scale-100 opacity-100" : "scale-95 opacity-90"
           }`}
         >
-          <div className="absolute top-0 bottom-0 left-0 w-7 bg-gradient-to-r from-[#C2D3E0] via-[#E4EDF4] to-transparent pointer-events-none z-20" />
+          <div className="absolute top-0 bottom-0 left-0 w-4 sm:w-7 bg-gradient-to-r from-[#C2D3E0] via-[#E4EDF4] to-transparent pointer-events-none z-20" />
 
-          <div className="absolute -top-1 right-10 w-6 h-16 bg-[#5B89A6] shadow-md z-20 flex items-end justify-center pb-1 rounded-b-sm">
+          <div className="absolute -top-1 right-6 sm:right-10 w-5 sm:w-6 h-12 sm:h-16 bg-[#5B89A6] shadow-md z-20 flex items-end justify-center pb-1 rounded-b-sm">
             <span className="text-[10px] text-white">✦</span>
           </div>
 
           <div
-            className={`book-cover absolute inset-0 bg-gradient-to-br from-[#487594] to-[#2B4C66] z-30 flex flex-col items-center justify-center text-white p-8 pointer-events-none ${
+            className={`book-cover absolute inset-0 bg-gradient-to-br from-[#487594] to-[#2B4C66] z-30 flex flex-col items-center justify-center text-white p-6 sm:p-8 pointer-events-none ${
               bookOpened ? "book-cover-open" : ""
             }`}
           >
-            <div className="border border-white/30 rounded-2xl p-8 text-center">
+            <div className="border border-white/30 rounded-2xl p-6 sm:p-8 text-center">
               <span className="text-3xl mb-2 block">📖</span>
               <p className="text-xs uppercase tracking-[0.25em] text-[#CFE2EE] mb-2">
                 Nhật Ký Tuổi Mới
               </p>
-              <h3 className="font-serif-vn text-2xl font-bold">
+              <h3 className="font-serif-vn text-xl sm:text-2xl font-bold">
                 Trang Sách Sinh Nhật
               </h3>
             </div>
           </div>
 
-          <div className="p-7 sm:p-10 pl-10 sm:pl-14 max-h-[82vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#D8E5EE] pb-4 mb-5">
+          <div className="p-5 sm:p-10 pl-7 sm:pl-14 max-h-[85dvh] sm:max-h-[82vh] flex flex-col">
+            <div className="flex items-start justify-between gap-2 border-b border-[#D8E5EE] pb-3.5 sm:pb-4 mb-4 sm:mb-5 pr-8 sm:pr-10">
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-[#5B89A6]">
+                <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-[#5B89A6]">
                   🌊 Trang sách kỷ niệm • Lời chúc tuổi mới
                 </span>
-                <h2 className="font-serif-vn text-2xl sm:text-3xl font-bold text-[#283E52] mt-0.5">
+                <h2 className="font-serif-vn text-xl sm:text-3xl font-bold text-[#283E52] mt-0.5 leading-snug">
                   {CONFIG.celebration.letterTitle}
                 </h2>
               </div>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-full bg-[#EAF1F6] hover:bg-[#DAE7F0] text-[#334B5E] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EAF1F6] hover:bg-[#DAE7F0] text-[#334B5E] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer shrink-0"
                 title="Gấp sách lại để ngắm bánh"
               >
                 ✕
               </button>
             </div>
 
-            <div className="overflow-y-auto pr-2 space-y-4 text-sm sm:text-[15px] text-[#2F4659] leading-relaxed whitespace-pre-line font-normal custom-scrollbar book-lines">
+            <div className="overflow-y-auto pr-1.5 sm:pr-2 space-y-3.5 sm:space-y-4 text-xs sm:text-[15px] text-[#2F4659] leading-relaxed whitespace-pre-line font-normal custom-scrollbar book-lines">
               {CONFIG.celebration.letterContent}
 
-              <div className="pt-4 pb-2 text-right font-serif-vn italic text-[#487594] font-semibold text-base">
+              <div className="pt-3 sm:pt-4 pb-2 text-right font-serif-vn italic text-[#487594] font-semibold text-sm sm:text-base">
                 — {CONFIG.celebration.letterSign}
               </div>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#D8E5EE] flex items-center justify-between">
+            <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[#D8E5EE] flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs text-[#6E879B] italic font-serif-vn">
                 Trang 01 / 01
               </span>
               <button
                 onClick={onClose}
-                className="px-6 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                className="px-5 sm:px-6 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
               >
                 Ẩn trang sách & Ngắm bánh 3D 🎂
               </button>
@@ -2542,9 +2605,7 @@ function BookLetterModal({
 }
 
 // ============================================================================
-// COMPONENT 4: TRANG TIỆM PHOTOBOOTH SINH NHẬT
-// - ĐÃ XÓA HOÀN TOÀN VÙNG CẮT ELIP QUANH MẶT, LÀM MỊN DA ĐỒNG NHẤT TOÀN KHUNG
-// - NHẬN DIỆN KHUÔN MẶT 3D 6DoF CHUẨN TIKTOK/INSTAGRAM
+// COMPONENT 4: TRANG TIỆM PHOTOBOOTH SINH NHẬT (RESPONSIVE ĐIỆN THOẠI & MÁY TÍNH)
 // ============================================================================
 export interface TrackedFacePose {
   detected: boolean;
@@ -3407,11 +3468,9 @@ function drawFilterAccessoryOnCanvas(
 
   ctx.save();
 
-  // 1. Lớp phủ Tone màu trong trẻo đồng nhất toàn khung (Không tạo bất kỳ hình elip nào)
   ctx.fillStyle = filter.tint;
   ctx.fillRect(0, 0, w, h);
 
-  // 2. Lấy tọa độ 6DoF thực tế của khuôn mặt
   const fx = facePose.foreheadX;
   const fy = facePose.foreheadY;
   const ex = facePose.eyeCenterX;
@@ -3425,14 +3484,10 @@ function drawFilterAccessoryOnCanvas(
   const yawShiftX = yaw * 18 * sc;
   const cosYaw = Math.max(0.75, Math.cos(yaw * 0.65));
 
-  // Dán sticker Băng cá nhân y tế bên gò má ở các khung chẵn
   if (filterIndex % 2 === 1) {
     drawCuteBandAid(ctx, rcx + 4 * sc, rcy - 2 * sc, roll - 0.18, 0.54 * sc);
   }
 
-  // --------------------------------------------------------------------------
-  // PHẦN B: VẼ PHỤ KIỆN AR 3D BÁM CHẶT THEO ĐẦU / MẮT NGƯỜI DÙNG
-  // --------------------------------------------------------------------------
   if (filterIndex === 0) {
     ctx.save();
     ctx.translate(fx + yawShiftX, fy - 8 * sc);
@@ -3831,9 +3886,6 @@ function drawFilterAccessoryOnCanvas(
     ctx.restore();
   }
 
-  // --------------------------------------------------------------------------
-  // PHẦN C: KHUNG ẢNH TRENDING KOREAN PHOTOBOOTH / PURIKURA SIÊU CẦU KỲ
-  // --------------------------------------------------------------------------
   const borderT = 32;
 
   ctx.save();
@@ -4442,8 +4494,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
     };
   }, [connectCameraStream]);
 
-  // Vòng lặp Render 60FPS: Đã xóa bỏ hoàn toàn vùng cắt elip (ctx.ellipse + ctx.clip),
-  // thay bằng thuật toán Full-Frame Soft-Focus Diffusion làm mịn da đồng nhất không tì vết
   useEffect(() => {
     let animId: number;
     const adaptiveLerp = (
@@ -4489,7 +4539,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
           ctx.clearRect(0, 0, w, h);
 
           if (video && video.readyState >= 2 && !cameraError) {
-            // PASS 1: Vẽ lớp ảnh gốc sắc nét với màu sắc trong trẻo
             ctx.save();
             ctx.filter = filterObj.cssFilter;
             ctx.translate(w, 0);
@@ -4497,8 +4546,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
             ctx.drawImage(video, 0, 0, w, h);
             ctx.restore();
 
-            // PASS 2: LÀM MỊN DA TOÀN KHUNG (SEAMLESS FULL-FRAME SOFT-FOCUS DIFFUSION)
-            // Không dùng ctx.ellipse hay ctx.clip -> Tuyệt đối không có vệt viền elip quanh mặt!
             ctx.save();
             ctx.globalAlpha = 0.25;
             ctx.globalCompositeOperation = "soft-light";
@@ -4525,7 +4572,6 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
             ctx.fillText("📸 Khung Hình Studio Sinh Nhật", w / 2, h * 0.49 + 5);
           }
 
-          // PASS 3: Vẽ Phụ kiện AR 3D bám theo khuôn mặt & Khung Purikura
           drawFilterAccessoryOnCanvas(ctx, w, h, activeFilterIdx, cur);
         }
       }
@@ -4709,23 +4755,23 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 relative z-20">
+    <div className="min-h-[100dvh] py-5 sm:py-8 px-3.5 sm:px-4 pb-24 relative z-20">
       <video ref={videoRef} playsInline muted autoPlay className="hidden" />
 
       <div className="max-w-5xl mx-auto">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] px-6 py-4 rounded-3xl shadow-sm">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-5 sm:mb-6 bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] px-4 sm:px-6 py-3.5 sm:py-4 rounded-3xl shadow-sm">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <button
               onClick={onBackToCake}
-              className="px-4 py-2 rounded-xl bg-[#EAF1F6] hover:bg-[#D6E5F0] text-[#283E52] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl bg-[#EAF1F6] hover:bg-[#D6E5F0] text-[#283E52] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>← Quay lại trang Bánh Kem 3D</span>
+              <span>← Bánh Kem 3D</span>
             </button>
             <div>
-              <h1 className="font-serif-vn text-xl sm:text-2xl font-bold text-[#283E52]">
+              <h1 className="font-serif-vn text-lg sm:text-2xl font-bold text-[#283E52]">
                 Tiệm Photobooth Sinh Nhật AR 📸🩺
               </h1>
-              <p className="text-xs text-[#546E82]">
+              <p className="text-[11px] sm:text-xs text-[#546E82]">
                 Làm mịn da tự nhiên & Nhận diện khuôn mặt 3D AR tự động bám
                 Filter
               </p>
@@ -4735,7 +4781,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
           {sessionState === "SELECTING" && (
             <button
               onClick={handleReturnToPrepareScreen}
-              className="px-5 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
               🔄 Chụp lại bộ 8 ảnh mới
             </button>
@@ -4743,35 +4789,35 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
         </div>
 
         {sessionState !== "SELECTING" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <div className="lg:col-span-2 bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-5 shadow-md flex flex-col items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
+            <div className="lg:col-span-2 bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-4 sm:p-5 shadow-md flex flex-col items-center">
               <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[#487594] bg-[#E6F0F7] px-3.5 py-1 rounded-full">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs font-semibold text-[#487594] bg-[#E6F0F7] px-3 py-1 rounded-full">
                     Khung #{activeFilterIdx + 1}{" "}
                     {PHOTOBOOTH_FILTERS[activeFilterIdx].icon}
                   </span>
                   <span
-                    className={`text-[11px] font-medium px-3 py-1 rounded-full border transition-all ${
+                    className={`text-[10px] sm:text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
                       faceDetectedStatus
                         ? "bg-[#EBF7EE] text-[#256B3E] border-[#B7DFC2]"
                         : "bg-[#F4F1EA] text-[#6E7F8D] border-[#D8E0E6]"
                     }`}
                   >
                     {faceDetectedStatus
-                      ? "🎯 Đã khóa khuôn mặt 3D AR + Làm mịn da"
+                      ? "🎯 Đã khóa khuôn mặt AR"
                       : "✨ Đang khởi tạo AR..."}
                   </span>
                 </div>
 
                 {sessionState === "SHOOTING" && (
-                  <span className="text-xs font-bold text-[#283E52] bg-[#F2ECE1] px-3.5 py-1 rounded-full border border-[#DEC89E]">
-                    Đang chụp tấm {currentShotIdx + 1} / 8
+                  <span className="text-xs font-bold text-[#283E52] bg-[#F2ECE1] px-3 py-1 rounded-full border border-[#DEC89E]">
+                    Tấm {currentShotIdx + 1} / 8
                   </span>
                 )}
               </div>
 
-              <div className="relative w-full max-w-[540px] aspect-[4/3] rounded-2xl overflow-hidden border-4 border-white shadow-inner bg-[#E6F0F7]">
+              <div className="relative w-full max-w-[540px] aspect-[4/3] rounded-2xl overflow-hidden border-2 sm:border-4 border-white shadow-inner bg-[#E6F0F7]">
                 <canvas
                   ref={previewCanvasRef}
                   width={640}
@@ -4780,12 +4826,12 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                 />
 
                 {sessionState === "SHOOTING" && (
-                  <div className="absolute top-9 right-9 w-14 h-14 rounded-full bg-[#283E52]/85 backdrop-blur-md text-white flex flex-col items-center justify-center shadow-lg border-2 border-white/70">
-                    <span className="text-xl font-bold leading-none">
+                  <div className="absolute top-4 right-4 sm:top-9 sm:right-9 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#283E52]/85 backdrop-blur-md text-white flex flex-col items-center justify-center shadow-lg border-2 border-white/70">
+                    <span className="text-base sm:text-xl font-bold leading-none">
                       {countdown}s
                     </span>
-                    <span className="text-[9px] uppercase tracking-wider opacity-85">
-                      Tấm {currentShotIdx + 1}/8
+                    <span className="text-[8px] sm:text-[9px] uppercase tracking-wider opacity-85">
+                      {currentShotIdx + 1}/8
                     </span>
                   </div>
                 )}
@@ -4801,23 +4847,21 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                 </p>
               )}
 
-              <div className="mt-5 w-full flex flex-col items-center">
+              <div className="mt-4 sm:mt-5 w-full flex flex-col items-center">
                 {sessionState === "IDLE" ? (
                   <button
                     type="button"
                     disabled={!cameraReady}
                     onClick={handleStart8Shots}
-                    className="px-8 py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-sm shadow-[0_10px_25px_rgba(91,137,166,0.35)] hover:scale-[1.02] transition-all cursor-pointer flex items-center gap-2"
+                    className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs sm:text-sm shadow-[0_10px_25px_rgba(91,137,166,0.35)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>
-                      📸 Bắt đầu chụp liên tiếp 8 bức ảnh (8 giây / tấm)
-                    </span>
+                    <span>📸 Bắt đầu chụp 8 bức ảnh (8 giây / tấm)</span>
                   </button>
                 ) : (
                   <div className="w-full max-w-md text-center">
                     <p className="text-xs font-semibold text-[#487594] mb-2">
-                      ✨ Hãy thoải mái nghiêng đầu hoặc di chuyển, Filter sẽ tự
-                      động bám sát theo khuôn mặt bạn!
+                      ✨ Hãy thoải mái nghiêng đầu tạo dáng, Filter tự động bám
+                      theo khuôn mặt bạn!
                     </p>
                     <div className="grid grid-cols-8 gap-1.5">
                       {Array.from({ length: 8 }).map((_, i) => (
@@ -4838,31 +4882,35 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
               </div>
             </div>
 
-            <div className="bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-5 shadow-md">
+            <div className="bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-4 sm:p-5 shadow-md">
               <h3 className="font-serif-vn text-base font-bold text-[#283E52] mb-1">
                 Chọn Thử 8 Khung Ảnh 🩺🎂
               </h3>
-              <p className="text-xs text-[#546E82] mb-4">
+              <p className="text-xs text-[#546E82] mb-3.5 sm:mb-4">
                 {sessionState === "IDLE"
-                  ? "Nhấp vào từng ô bên dưới để thử hiệu ứng AR bám theo khuôn mặt:"
+                  ? "Chạm vào từng ô bên dưới để thử hiệu ứng AR bám theo khuôn mặt:"
                   : "Hệ thống đang tự động chuyển lần lượt qua 8 khung:"}
               </p>
 
-              <div className="grid grid-cols-4 gap-2.5 mb-5">
+              <div className="grid grid-cols-4 gap-2 sm:gap-2.5 mb-5">
                 {PHOTOBOOTH_FILTERS.map((f, idx) => (
                   <button
                     key={f.id}
                     type="button"
                     disabled={sessionState === "SHOOTING"}
                     onClick={() => setActiveFilterIdx(idx)}
-                    className={`py-3 px-2 rounded-2xl text-center border transition-all flex flex-col items-center justify-center gap-1 ${
+                    className={`py-2.5 sm:py-3 px-2 rounded-2xl text-center border transition-all flex flex-col items-center justify-center gap-1 ${
                       activeFilterIdx === idx
                         ? "bg-[#5B89A6] text-white border-[#5B89A6] font-bold shadow-sm scale-105"
                         : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#7BA7C4] cursor-pointer"
                     }`}
                   >
-                    <span className="text-lg leading-none">{f.icon}</span>
-                    <span className="text-[11px]">#{idx + 1}</span>
+                    <span className="text-base sm:text-lg leading-none">
+                      {f.icon}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px]">
+                      #{idx + 1}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -4889,27 +4937,27 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
         )}
 
         {sessionState === "SELECTING" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 items-start animate-fadeIn">
-            <div className="lg:col-span-2 bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-6 shadow-md">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-7 items-start animate-fadeIn">
+            <div className="lg:col-span-2 bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-4 sm:p-6 shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div>
-                  <h2 className="font-serif-vn text-xl font-bold text-[#283E52]">
+                  <h2 className="font-serif-vn text-lg sm:text-xl font-bold text-[#283E52]">
                     Chọn 4 Bức Ảnh Ưng Ý Nhất ({selectedIndices.length} / 4)
                   </h2>
                   <p className="text-xs text-[#546E82]">
-                    Nhấp vào từng ảnh để chọn hoặc bỏ chọn. Đủ 4 bức sẽ ghép
+                    Chạm vào từng ảnh để chọn hoặc bỏ chọn. Đủ 4 bức sẽ ghép
                     thành dải Photobooth!
                   </p>
                 </div>
 
-                <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#EAF4EC] text-[#2E6B40] border border-[#B7DFC2]">
+                <span className="text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full bg-[#EAF4EC] text-[#2E6B40] border border-[#B7DFC2]">
                   {uploadStatus === "UPLOADING"
                     ? "☁️ Đang lưu 8 ảnh vào Google Drive..."
                     : "✓ Đã đồng bộ cả 8 ảnh về Google Drive"}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5">
                 {capturedPhotos.map((photo, idx) => {
                   const selectedOrder = selectedIndices.indexOf(idx);
                   const isSelected = selectedOrder !== -1;
@@ -4949,7 +4997,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
               </div>
             </div>
 
-            <div className="bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-6 shadow-md flex flex-col items-center">
+            <div className="bg-[#FAF8F2]/95 border border-[#D8E5EE] rounded-3xl p-5 sm:p-6 shadow-md flex flex-col items-center">
               <h3 className="font-serif-vn text-lg font-bold text-[#283E52] mb-1">
                 Dải Ảnh Photobooth (4 Ô)
               </h3>
@@ -5024,7 +5072,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
 }
 
 // ============================================================================
-// COMPONENT 3: TRANG CHÚC MỪNG 3D (NHỚ TRẠNG THÁI ĐÃ VIẾT ĐIỀU ƯỚC KHI QUAY VỀ TỪ PHOTOBOOTH)
+// COMPONENT 3: TRANG CHÚC MỪNG 3D (TỐI ƯU RESPONSIVE MOBILE & DESKTOP)
 // ============================================================================
 function CelebrationPage({
   onOpenPhotobooth,
@@ -5085,24 +5133,25 @@ function CelebrationPage({
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden flex flex-col justify-between select-none">
+    <div className="relative min-h-[100dvh] w-full overflow-hidden flex flex-col justify-between select-none">
       <BalloonsBackground />
 
-      <div className="fixed top-20 right-5 z-30 pointer-events-auto">
+      {/* Nút mở Photobooth responsive: Thu gọn gọn gàng trên điện thoại, đầy đủ trên máy tính */}
+      <div className="fixed top-12 right-3 sm:top-20 sm:right-5 z-30 pointer-events-auto">
         <button
           type="button"
           onClick={onOpenPhotobooth}
-          className="group flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white border border-[#B8D2E3] shadow-[0_10px_28px_rgba(40,62,82,0.14)] text-[#283E52] transition-all hover:scale-105 cursor-pointer"
+          className="group flex items-center gap-2 sm:gap-2.5 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white border border-[#B8D2E3] shadow-[0_10px_28px_rgba(40,62,82,0.14)] text-[#283E52] transition-all hover:scale-105 cursor-pointer"
         >
-          <span className="w-8 h-8 rounded-xl bg-[#5B89A6] text-white flex items-center justify-center text-base shadow-sm">
+          <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#5B89A6] text-white flex items-center justify-center text-sm sm:text-base shadow-sm">
             📸
           </span>
-          <div className="text-left pr-1">
-            <div className="text-xs font-bold leading-tight text-[#283E52]">
-              Tiệm Photobooth
+          <div className="text-left pr-0.5 sm:pr-1">
+            <div className="text-[11px] sm:text-xs font-bold leading-tight text-[#283E52]">
+              Photobooth
             </div>
-            <div className="text-[10px] text-[#5B89A6] font-medium">
-              Chụp 8 kiểu ảnh AR →
+            <div className="text-[9px] sm:text-[10px] text-[#5B89A6] font-medium hidden xs:block sm:block">
+              Chụp 8 ảnh AR →
             </div>
           </div>
         </button>
@@ -5118,21 +5167,21 @@ function CelebrationPage({
         </div>
       )}
 
-      <header className="relative z-20 pt-16 sm:pt-20 px-4 text-center pointer-events-auto">
-        <div className="inline-block bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] px-7 py-3.5 rounded-full shadow-sm">
-          <p className="text-[11px] uppercase tracking-[0.25em] text-[#487594] font-semibold">
+      <header className="relative z-20 pt-24 sm:pt-20 px-3 sm:px-4 text-center pointer-events-auto">
+        <div className="inline-block bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full shadow-sm max-w-[92vw]">
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-[#487594] font-semibold">
             ✨ Happy Birthday To You ✨
           </p>
-          <h1 className="font-serif-vn text-2xl sm:text-3xl font-bold text-[#283E52] mt-0.5">
+          <h1 className="font-serif-vn text-lg sm:text-3xl font-bold text-[#283E52] mt-0.5 truncate">
             Tuổi Mới Bình Yên Giữa Trời Xanh
           </h1>
         </div>
-        <p className="text-xs text-[#4A6275] mt-2 font-medium">
-          (Dùng chuột hoặc chạm tay xoay 360° quanh chiếc bánh sinh nhật 3D)
+        <p className="text-[11px] sm:text-xs text-[#4A6275] mt-1.5 sm:mt-2 font-medium px-2">
+          (Chạm tay hoặc dùng chuột xoay 360° quanh chiếc bánh sinh nhật 3D)
         </p>
       </header>
 
-      <div className="relative z-10 w-full h-[50vh] sm:h-[56vh] cursor-grab active:cursor-grabbing">
+      <div className="relative z-10 w-full h-[46dvh] sm:h-[56vh] cursor-grab active:cursor-grabbing touch-none">
         <Canvas shadows camera={{ position: [0, 1.75, 4.3], fov: 42 }}>
           <ambientLight intensity={0.85} />
           <directionalLight position={[5, 8, 5]} intensity={1.1} castShadow />
@@ -5159,19 +5208,19 @@ function CelebrationPage({
           <OrbitControls
             enablePan={false}
             minDistance={2.8}
-            maxDistance={6}
+            maxDistance={6.2}
             minPolarAngle={Math.PI / 6}
             maxPolarAngle={Math.PI / 2.05}
           />
         </Canvas>
       </div>
 
-      <footer className="relative z-20 pb-8 px-4 flex flex-col items-center gap-3 pointer-events-auto">
+      <footer className="relative z-20 pb-16 sm:pb-8 px-4 flex flex-col items-center gap-3 pointer-events-auto">
         {candleState === "UNLIT" && (
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             <button
               onClick={handleLightCandle}
-              className="px-8 py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-sm shadow-[0_10px_28px_rgba(91,137,166,0.38)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+              className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs sm:text-sm shadow-[0_10px_28px_rgba(91,137,166,0.38)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
             >
               <span>🕯️ Thắp nến sinh nhật</span>
             </button>
@@ -5179,7 +5228,7 @@ function CelebrationPage({
             {hasWrittenWishOnce && (
               <button
                 onClick={() => setIsLetterVisible((prev) => !prev)}
-                className="px-7 py-4 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
+                className="px-6 sm:px-7 py-3.5 sm:py-4 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
               >
                 {isLetterVisible ? "Ẩn lá thư 📖" : "Hiện lá thư chúc mừng 💌"}
               </button>
@@ -5188,18 +5237,18 @@ function CelebrationPage({
         )}
 
         {candleState === "LIT" && !showWishModal && (
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             {!hasWrittenWishOnce ? (
               <button
                 onClick={() => setShowWishModal(true)}
-                className="px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
+                className="px-6 sm:px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
               >
                 ✨ Viết điều ước & Thổi nến
               </button>
             ) : (
               <button
                 onClick={() => triggerRealisticBlowOut(false)}
-                className="px-8 py-3.5 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                className="px-7 sm:px-8 py-3.5 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2"
               >
                 <span>🌬️ Thổi nến</span>
               </button>
@@ -5208,7 +5257,7 @@ function CelebrationPage({
             {hasWrittenWishOnce && (
               <button
                 onClick={() => setIsLetterVisible((v) => !v)}
-                className="px-6 py-3.5 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white text-[#283E52] border border-[#D8E5EE] font-semibold text-xs shadow-sm transition-all cursor-pointer"
+                className="px-5 sm:px-6 py-3.5 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white text-[#283E52] border border-[#D8E5EE] font-semibold text-xs shadow-sm transition-all cursor-pointer"
               >
                 {isLetterVisible ? "Ẩn trang sách 📖" : "Mở lại trang sách 💌"}
               </button>
@@ -5217,16 +5266,16 @@ function CelebrationPage({
         )}
 
         {candleState === "BLOWING" && (
-          <div className="px-6 py-3 rounded-2xl bg-[#FAF8F2]/90 border border-[#D8E5EE] text-xs font-semibold text-[#487594] shadow-sm animate-pulse">
+          <div className="px-5 sm:px-6 py-3 rounded-2xl bg-[#FAF8F2]/90 border border-[#D8E5EE] text-xs font-semibold text-[#487594] shadow-sm animate-pulse">
             🌬️ Làn gió biển đang thổi tắt ngọn nến...
           </div>
         )}
 
         {candleState === "BLOWN" && (
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             <button
               onClick={() => setIsLetterVisible((prev) => !prev)}
-              className="px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
+              className="px-6 sm:px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
             >
               {isLetterVisible ? "Ẩn lá thư 📖" : "Hiện lá thư chúc mừng 💌"}
             </button>
@@ -5243,10 +5292,10 @@ function CelebrationPage({
 
       {showWishModal && !hasWrittenWishOnce && (
         <div className="fixed inset-0 z-40 bg-[#182633]/35 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-[#FAF8F2] border border-[#D8E5EE] rounded-3xl max-w-md w-full p-7 shadow-2xl">
+          <div className="bg-[#FAF8F2] border border-[#D8E5EE] rounded-3xl max-w-md w-full p-5 sm:p-7 shadow-2xl">
             <div className="text-center mb-4">
               <span className="text-2xl">🕯️✨</span>
-              <h3 className="font-serif-vn text-2xl font-bold text-[#283E52] mt-1">
+              <h3 className="font-serif-vn text-xl sm:text-2xl font-bold text-[#283E52] mt-1">
                 Khoảnh Khắc Cầu Nguyện
               </h3>
               <p className="text-xs text-[#546E82] mt-1">
@@ -5261,11 +5310,11 @@ function CelebrationPage({
                 value={wishText}
                 onChange={(e) => setWishText(e.target.value)}
                 placeholder="Hãy nhắm mắt và viết điều ước của bạn vào đây..."
-                className="w-full p-4 rounded-2xl bg-white border border-[#D8E5EE] text-sm text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] resize-none"
+                className="w-full p-3.5 sm:p-4 rounded-2xl bg-white border border-[#D8E5EE] text-base sm:text-sm text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] resize-none"
                 required
               />
 
-              <div className="flex gap-2.5">
+              <div className="flex flex-col sm:flex-row gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowWishModal(false)}
@@ -5326,7 +5375,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F7F6F0] via-[#ECF3F8] to-[#F3EFE4] text-[#283E52] font-sans-vn antialiased selection:bg-[#CFE2EE] selection:text-[#1D3040] relative">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-[#F7F6F0] via-[#ECF3F8] to-[#F3EFE4] text-[#283E52] font-sans-vn antialiased selection:bg-[#CFE2EE] selection:text-[#1D3040] relative overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,500;0,600;0,700;1,400;1,600&display=swap');
 
@@ -5451,7 +5500,8 @@ export default function App() {
         showBunting={screen !== "GAMES" && screen !== "PHOTOBOOTH"}
       />
 
-      <BackgroundMusicPlayer />
+      {/* Bộ phát nhạc tự động đổi theo màn hình: LOGIN tắt nhạc, GAMES phát bản 1, CELEBRATION/PHOTOBOOTH phát bản 2 */}
+      <BackgroundMusicPlayer screen={screen} />
 
       {screen === "LOGIN" && (
         <Login
