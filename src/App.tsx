@@ -43,7 +43,7 @@ const CONFIG = {
   submissionConfig: {
     mode: "APPS_SCRIPT",
     appsScriptUrl:
-      "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec",
+      "https://script.google.com/macros/s/AKfycbwV1M2KQ1Gk1yltSkGcnXBf6uLSt-7_0IHyS-b6chucGBLo3JXOhvPzFo-TnAw-tq-fKg/exec",
     googleFormActionUrl:
       "https://docs.google.com/forms/d/e/1FAIpQLSf_YOUR_FORM_ID_HERE/formResponse",
     googleFormEntries: {
