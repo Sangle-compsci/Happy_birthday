@@ -66,15 +66,14 @@ const CONFIG = {
   game1: {
     digit: "1",
     resetDelayMs: 2200,
-    question:
-      "Trong những khoảnh khắc đời thường dưới đây, điều gì làm nên một ngày sinh nhật thật sự đáng nhớ và trọn vẹn nhất?",
+    question: "Chủ website này có đẹp trai, tốt bụng không?",
     options: [
-      { id: "A", text: "Một bữa tiệc thật ồn ào ở nơi đông đúc" },
-      { id: "B", text: "Chỉ cần đếm thật nhiều quà mà không cần lời chúc" },
-      { id: "C", text: "Ngủ một mạch từ sáng đến tối không gặp ai" },
+      { id: "A", text: "Có." },
+      { id: "B", text: "Tất nhiên là có." },
+      { id: "C", text: "Không phải bài cãi." },
       {
         id: "D",
-        text: "Sự hiện diện ấm áp, chân thành và những kỷ niệm dịu dàng bên người thương quý",
+        text: "Tất cả các đáp án trên đều đúng.",
       },
     ],
     correctAnswer: "D",
@@ -87,13 +86,16 @@ const CONFIG = {
     flappyPointsPerPipe: 1,
     flappyTrapScore: 49,
     truthQuestions: [
-      "1. Ấn tượng đầu tiên của bạn về mình là gì (hãy nói thật lòng nhé)?",
-      "2. Kỷ niệm nào giữa chúng mình khiến bạn mỉm cười mỗi khi bất chợt nhớ lại?",
-      "3. Điều nhỏ bé gì ở hiện tại đang làm bạn cảm thấy bình yên và hạnh phúc nhất?",
-      "4. Nếu có một tấm vé đi bất cứ đâu vào ngày mai, bạn muốn đi đâu cùng ai?",
-      "5. Một thói quen đáng yêu của bạn mà ít người nhận ra là gì?",
-      "6. Trong tuổi mới này, mục tiêu lớn nhất mà bạn muốn chinh phục là gì?",
-      "7. Hãy viết một lời nhắn nhủ thật lòng gửi cho chính bạn của 1 năm sau:",
+      "1. Lý do lớn nhất khiến cô theo đuổi ngành Y là gì?",
+      "2. Nếu ra ngoài đi ăn, cô sẽ chọn món gì để thưởng thức và tại sao?",
+      "3. Một bài hát mà cô yêu thích nhất và thường nghe đi nghe lại?",
+      "4. Một kỷ niệm mà cô nhớ mãi đến giờ?",
+      "5. Nếu có thể quay ngược thời gian, cô sẽ muốn thay đổi điều gì trong quá khứ?",
+      "6. Kể một vài điểm mà cô cảm thấy thích nhất ở tôi?",
+      "7. Kể một vài điểm mà cô cảm thấy không thích ở tôi?",
+      "8. Vài câu mô tả cảm xúc của cô ngày cô nhận lá thư tạm biệt của tôi?",
+      "9. Sau này, cô có muốn gặp lại tôi hay không?",
+      "10. Những năm tháng ấy, đã có bao giờ rung động với tôi hay chưa?",
     ],
   },
 
@@ -104,164 +106,139 @@ const CONFIG = {
     resetDelayMs: 2200,
     questionsPool: [
       {
-        q: "Loài hoa nào thường biểu trưng cho sự thuần khiết, dịu dàng và thanh tao?",
-        options: [
-          "Hoa Linh Lan",
-          "Hoa Xương Rồng",
-          "Hoa Dâm Bụt",
-          "Hoa Hướng Dương",
-        ],
-        correct: 0,
+        q: "Màu sắc mà tôi yêu thích là màu gì?",
+        options: ["Xanh Dương.", "Đen.", "Trắng.", "Đỏ."],
+        correct: 2,
       },
       {
-        q: "Đâu là tên một nốt nhạc cơ bản trong âm nhạc?",
-        options: ["Nốt Son", "Nốt Mây", "Nốt Gió", "Nốt Nắng"],
-        correct: 0,
-      },
-      {
-        q: "Trong một năm dương lịch, tháng nào có ít ngày nhất?",
-        options: ["Tháng 4", "Tháng 2", "Tháng 6", "Tháng 9"],
+        q: "Ca sĩ nào tôi yêu thích nhất?",
+        options: ["Tùng núi.", "jack 5 củ.", "Hiếu Thứ 2.", "Đen Vâu."],
         correct: 1,
       },
       {
-        q: "Sắc xanh dương Pastel của bầu trời và chiếc áo Scrubs bác sĩ mang lại cảm giác gì?",
+        q: "Ngày mà hai đứa cắm ở lớp đến tận đêm?",
+        options: ["Ngày 25/2.", "Ngày 1/3.", "Ngày 23/1.", "Ngày 15/10."],
+        correct: 2,
+      },
+      {
+        q: "Nếu không học ở UIT, thì tôi sẽ học ở đâu?",
+        options: ["HCMUS.", "BKU.", "DUT.", "QNU."],
+        correct: 2,
+      },
+      {
+        q: "Ước mơ nghề nghiệp của tôi là gì?",
+        options: ["Ai engineer.", "Bác sĩ.", "Kỹ sư phần mềm.", "Giáo viên."],
+        correct: 3,
+      },
+      {
+        q: "Món ăn mà tôi thích nhất là gì?",
         options: [
-          "Sự bình yên, tin cậy và niềm hy vọng dịu mát",
-          "Sự nóng bức của sa mạc",
-          "Sự ồn ào vội vã",
-          "Cảm giác cay nồng",
+          "Sườn xào chua ngọt.",
+          "Tôm rang muối.",
+          "Thịt kho tàu.",
+          "Cơm chiên trứng.",
+        ],
+        correct: 2,
+      },
+      {
+        q: "Tôi đang học ngành gì ở UIT?",
+        options: [
+          "Khoa học Máy tính.",
+          "Công nghệ Thông tin.",
+          "An toàn thông tin.",
+          "Kỹ thuật Phần mềm.",
         ],
         correct: 0,
       },
       {
-        q: "Khi thổi nến sinh nhật, người ta thường làm gì ngay trước đó?",
+        q: "Mùa nào trong năm mà tôi yêu thích nhất?",
+        options: ["Mùa Xuân.", "Mùa Hạ.", "Mùa Thu.", "Mùa Đông."],
+        correct: 2,
+      },
+      {
+        q: "Vì sao tôi lại chọn ngành học hiện tại?",
         options: [
-          "Nhắm mắt và ước một điều tốt đẹp",
-          "Đi rửa mặt",
-          "Đếm số hạt đường trên bánh",
-          "Tắt màn hình điện thoại",
+          "Đam mê với công nghệ và lập trình.",
+          "Tiền",
+          "Ngành này ngầu.",
+          "Không biết nữa.",
         ],
-        correct: 0,
-      },
-      {
-        q: "Đâu là thức uống thường xuất hiện trong những buổi chiều thư giãn nhẹ nhàng?",
-        options: [
-          "Trà hoa cúc mật ong",
-          "Nước mắm nguyên chất",
-          "Giấm táo đậm đặc",
-          "Dầu ăn",
-        ],
-        correct: 0,
-      },
-      {
-        q: "Hành tinh nào được mệnh danh là 'Sao Hôm' và 'Sao Mai' trên bầu trời?",
-        options: ["Sao Kim (Venus)", "Sao Hỏa", "Sao Thủy", "Sao Thổ"],
-        correct: 0,
-      },
-      {
-        q: "Một năm nhuận có tổng cộng bao nhiêu ngày?",
-        options: ["365 ngày", "366 ngày", "364 ngày", "360 ngày"],
         correct: 1,
       },
       {
-        q: "Dụng cụ quen thuộc nào luôn gắn liền với hình ảnh người Bác sĩ tận tâm?",
+        q: "Địa điểm nào tôi sẽ chọn nếu đi chơi?",
         options: [
-          "Ống nghe y khoa (Stethoscope)",
-          "Chiếc xẻng làm vườn",
-          "Cây vợt cầu lông",
-          "Chiếc la bàn",
+          "Phố xá nhộn nhịp.",
+          "Thiên nhiên yên bình.",
+          "Biển xanh mênh mông.",
+          "Di tích lịch sử.",
+        ],
+        correct: 1,
+      },
+      {
+        q: "Nếu bước vào quán cà phê, đồ uống chân ái tôi sẽ gọi không cần suy nghĩ là?",
+        options: ["Cà phê sữa.", "Trà sữa.", "Cà phê dừa.", "Trà trái cây."],
+        correct: 2,
+      },
+      {
+        q: "Điều gì làm tôi cảm thấy quạo nhất?",
+        options: [
+          "Thời tiết nắng nóng.",
+          "Ai đó làm phiền lúc tôi tập trung.",
+          "Những người nói nhiều.",
+          "Mất đồ đạc quan trọng.",
+        ],
+        correct: 1,
+      },
+      {
+        q: "Khi tôi thật sự giận, dấu hiệu nhận biết rõ nhất là gì?",
+        options: ["Im lặng.", "Cọc cằng.", "Chửi bới.", "Đập phá đồ vật."],
+        correct: 0,
+      },
+      {
+        q: "Tại sao tôi hay cãi với người khác (kể cả thầy Dũng) dù là điều nhỏ nhặt?",
+        options: [
+          "Vì tôi là người cầu toàn.",
+          "Vì tôi muốn mọi thứ phải đúng ý mình.",
+          "Vì nó vui.",
+          "Vì cái Tôi cao.",
+        ],
+        correct: 2,
+      },
+      {
+        q: "Khuyết điểm lớn nhất mà tôi đã tự khắc phục được là gì?",
+        options: [
+          "Nóng tính, hay cọc.",
+          "Lười biếng, hay trì hoãn.",
+          "Thiếu kiên nhẫn, hay bỏ cuộc.",
+          "Thiếu tự tin, hay lo lắng.",
         ],
         correct: 0,
       },
       {
-        q: "Cầu vồng thường xuất hiện trên bầu trời vào thời điểm nào?",
+        q: "Tính cách nào mà tôi tự hào về mình nhất?",
+        options: ["Sáng tạo.", "Kỷ luật.", "Kiên nhẫn.", "Đam mê học hỏi."],
+        correct: 1,
+      },
+      {
+        q: "Tôi có bao người em trong gia đình?",
+        options: ["0", "1", "2", "3"],
+        correct: 2,
+      },
+      {
+        q: "Thần tượng của tôi trong esport là ai?",
         options: [
-          "Sau cơn mưa khi có ánh nắng mặt trời",
-          "Lúc nửa đêm không trăng",
-          "Khi tuyết rơi dày",
-          "Trong phòng kín",
+          "Faker (T1, liên minh huyền thoại).",
+          "Lai Bâng (SGP, Liên quân Mobile).",
+          "ADC (Team Flash, Liên quân Mobile).",
+          "Ruler (Gen.G, liên minh huyền thoại).",
         ],
-        correct: 0,
+        correct: 1,
       },
       {
-        q: "Loại nhạc cụ nào có các phím đen và trắng xếp xen kẽ nhau?",
-        options: ["Đàn Piano", "Đàn Bầu", "Sáo Trúc", "Trống Cơ"],
-        correct: 0,
-      },
-      {
-        q: "Trong bốn mùa Xuân - Hạ - Thu - Đông, mùa nào bầu trời thường trong xanh cao vời vợi?",
-        options: ["Mùa Thu", "Mùa Mưa", "Mùa Bão", "Mùa Tuyết"],
-        correct: 0,
-      },
-      {
-        q: "Thành phần chính tạo nên vị ngọt dịu tự nhiên của mật ong là gì?",
-        options: ["Mật hoa tự nhiên", "Muối biển", "Bột mì", "Hạt tiêu"],
-        correct: 0,
-      },
-      {
-        q: "Đâu là một cách thể hiện sự quan tâm tinh tế dành cho người thương quý?",
-        options: [
-          "Lắng nghe chân thành và nhớ những điều nhỏ nhặt",
-          "Luôn ngắt lời khi họ nói",
-          "Quên hết mọi lời hứa",
-          "Chỉ nhắn tin khi cần nhờ vả",
-        ],
-        correct: 0,
-      },
-      {
-        q: "Ánh sáng mặt trời vào lúc sáng sớm thường được gọi là gì?",
-        options: [
-          "Bình minh / Nắng mai",
-          "Hoàng hôn",
-          "Chạng vạng",
-          "Đêm khuya",
-        ],
-        correct: 0,
-      },
-      {
-        q: "Hương thơm nào sau đây thường giúp tinh thần thư thái, dễ chịu?",
-        options: [
-          "Hương gió biển & gỗ đàn hương",
-          "Mùi khói xe",
-          "Mùi xăng",
-          "Mùi sơn tường",
-        ],
-        correct: 0,
-      },
-      {
-        q: "Một tuần lễ có tất cả bao nhiêu giờ đồng hồ?",
-        options: ["168 giờ", "120 giờ", "144 giờ", "200 giờ"],
-        correct: 0,
-      },
-      {
-        q: "Kim loại nào quý hiếm thường được dùng để chế tác trang sức thanh lịch?",
-        options: [
-          "Bạch kim (Platinum) & Vàng",
-          "Than đá",
-          "Nhựa dẻo",
-          "Gỗ thông",
-        ],
-        correct: 0,
-      },
-      {
-        q: "Trên chiếc bánh kem truyền thống, những ngọn nến tượng trưng cho điều gì?",
-        options: [
-          "Ánh sáng hy vọng và cột mốc tuổi mới rạng rỡ",
-          "Nhiệt độ trong phòng",
-          "Trọng lượng chiếc bánh",
-          "Thời gian nướng bánh",
-        ],
-        correct: 0,
-      },
-      {
-        q: "Điều gì làm cho một món quà trở nên vô giá?",
-        options: [
-          "Tấm lòng và tâm huyết của người chuẩn bị",
-          "Kích thước thật cồng kềnh",
-          "Bao bì càng dày càng tốt",
-          "Mua vội trong 1 phút",
-        ],
-        correct: 0,
+        q: "Năm trước tôi khoe với cô được bao nhiêu điểm Toiec?",
+        options: ["700+", "750+", "800+", "850+"],
+        correct: 2,
       },
     ],
   },
@@ -270,12 +247,12 @@ const CONFIG = {
   game4: {
     digit: "0",
     mathQuestion:
-      "Bài toán nhỏ: Lấy (Số tháng trong 1 năm × 2) cộng với (Số ngày trong 1 tuần), rồi trừ đi 6. Kết quả bằng bao nhiêu?",
-    correctAnswer: "25",
+      "Tính đến thời điểm hiện tại, tôi đã thương cô bao nhiêu lâu rồi (năm)?",
+    correctAnswer: "8",
     maxWrongAttempts: 5,
-    teasePopupTitle: "Ơ kìa, tính nhẩm hơi lag nhẹ rồi nha! 🤭",
+    teasePopupTitle: "Chưa đúng đâu! 🤭",
     teasePopupMessage:
-      "Sai tới 5 lần luôn rồi đó! Thôi không sao, hôm nay là ngày đặc biệt nên hệ thống xin phép 'cứu trợ' nhẹ nhàng. Đáp án chính xác là 25 nhé, tặng luôn chữ số cuối cùng nè!",
+      "Sai tới 5 lần luôn rồi! Thôi không sao, hệ thống xin phép 'cứu trợ' nhẹ nhàng. Đáp án chính xác là 8 nhé, tặng luôn chữ số cuối cùng nè!",
   },
 
   // 7. Trang Chúc mừng 3D & Photobooth (14 BỨC ẢNH KỶ NIỆM BAY NGẪU NHIÊN LUÂN PHIÊN)
@@ -285,60 +262,60 @@ const CONFIG = {
     // Sau đó đổi các đường dẫn `url` bên dưới thành: `url: "/photos/anh-1.jpg"`,... `url: "/photos/anh-14.jpg"`
     balloonPhotos: [
       {
-        url: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-1.jpg"
+        url: "/photos/pc1.jpg", // <-- Đổi thành "/photos/anh-1.jpg"
         caption: "Khởi đầu dịu dàng",
       },
       {
-        url: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-2.jpg"
+        url: "/photos/pc2.jpg", // <-- Đổi thành "/photos/anh-2.jpg"
         caption: "Nụ cười tỏa nắng",
       },
       {
-        url: "https://images.unsplash.com/photo-1464349153735-7db50ed83c84?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-3.jpg"
-        caption: "Tuổi mới bình yên",
+        url: "/photos/pc3.jpg", // <-- Đổi thành "/photos/anh-3.jpg"
+        caption: "rạng rỡ như hoa",
       },
       {
-        url: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-4.jpg"
+        url: "/photos/pc4.jpg", // <-- Đổi thành "/photos/anh-4.jpg"
         caption: "Khoảnh khắc đáng nhớ",
       },
       {
-        url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-5.jpg"
+        url: "/photos/pc5.jpg", // <-- Đổi thành "/photos/anh-5.jpg"
         caption: "Biển trời mênh mông",
       },
       {
-        url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-6.jpg"
-        caption: "Rạng rỡ như hoa",
+        url: "/photos/pc6.jpg", // <-- Đổi thành "/photos/anh-6.jpg"
+        caption: "khúc thanh xuân",
       },
       {
-        url: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-7.jpg"
-        caption: "Hạnh phúc ngập tràn",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-8.jpg"
+        url: "/photos/pc7.jpg", // <-- Đổi thành "/photos/anh-8.jpg"
         caption: "Nắng ấm ban mai",
       },
       {
-        url: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-9.jpg"
+        url: "/photos/pc8.jpg", // <-- Đổi thành "/photos/anh-9.jpg"
         caption: "Bữa tiệc ngọt ngào",
       },
       {
-        url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-10.jpg"
+        url: "/photos/pc9.jpg", // <-- Đổi thành "/photos/anh-10.jpg"
         caption: "Giai điệu thanh xuân",
       },
       {
-        url: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-11.jpg"
+        url: "/photos/pc10.jpg", // <-- Đổi thành "/photos/anh-11.jpg"
         caption: "Dịu dàng trong trẻo",
       },
       {
-        url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-12.jpg"
-        caption: "Ước mơ bay cao",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-13.jpg"
+        url: "/photos/pc11.jpg", // <-- Đổi thành "/photos/anh-12.jpg"
         caption: "Ánh nhìn lấp lánh",
       },
       {
-        url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80", // <-- Đổi thành "/photos/anh-14.jpg"
+        url: "/photos/pc12.jpg", // <-- Đổi thành "/photos/anh-13.jpg"
+        caption: "Khoảnh khắc hạnh phúc",
+      },
+      {
+        url: "/photos/pc13.jpg", // <-- Đổi thành "/photos/anh-14.jpg"
         caption: "Mãi luôn rạng ngời",
+      },
+      {
+        url: "/photos/pc14.jpg", // <-- Đổi thành "/photos/anh-14.jpg"
+        caption: "Hạnh phúc trọn vẹn",
       },
     ],
     letterTitle: "Gửi Người Đặc Biệt Trong Ngày Sinh Nhật",
@@ -870,8 +847,8 @@ function Login({
             Cánh Cửa Sinh Nhật
           </h1>
           <p className="text-xs sm:text-sm text-[#5E768A] mt-1.5 sm:mt-2 leading-relaxed px-2">
-            Nhập mã kỷ niệm để bước vào không gian bình yên của bầu trời và đại
-            dương
+            Nhập mã kỷ niệm để bước vào không gian dành riêng cho cô gái đặc
+            biệt ngày hôm nay!
           </p>
         </div>
 
@@ -937,7 +914,7 @@ function Login({
               type="submit"
               className="w-full py-3.5 px-6 rounded-xl bg-[#5B89A6] hover:bg-[#487594] active:scale-[0.99] text-white font-medium text-sm shadow-[0_8px_20px_rgba(91,137,166,0.28)] transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>Mở Cửa Không Gian 3D</span>
+              <span>Mở Cửa Không Gian</span>
               <span>✨</span>
             </button>
 
@@ -1620,7 +1597,7 @@ function GameBoard({
               { idx: 0, label: "Màn 1: Trắc nghiệm" },
               { idx: 1, label: "Màn 2: Thật / Thách" },
               { idx: 2, label: "Màn 3: Triệu Phú" },
-              { idx: 3, label: "Màn 4: Giải Toán" },
+              { idx: 3, label: "Màn 4: Đếm" },
             ].map((tab) => {
               const done = unlockedDigits[tab.idx] !== null;
               const active = currentStep === tab.idx;
@@ -1780,9 +1757,9 @@ function GameBoard({
                 Thật hay Thách?
               </h3>
               <p className="text-xs sm:text-sm text-[#4A6275] mb-5 leading-relaxed">
-                Chọn <strong>Thật</strong> để trả lời 7 câu hỏi tâm sự, hoặc
-                chọn <strong>Thách</strong> để vượt qua 50 chướng ngại vật
-                Flappy Bird!
+                Chọn <strong>Thật</strong> để trả lời 10 câu hỏi một cách thật
+                lòng, hoặc chọn <strong>Thách</strong> để vượt qua 50 chướng
+                ngại vật Flappy Bird!
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-5 sm:mb-6">
@@ -1795,7 +1772,7 @@ function GameBoard({
                       : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#5B89A6]"
                   }`}
                 >
-                  💌 Chọn Thật (7 câu hỏi)
+                  💌 Chọn Thật (10 câu hỏi)
                 </button>
                 <button
                   type="button"
@@ -1856,8 +1833,8 @@ function GameBoard({
                       className="w-full py-3 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold transition-all cursor-pointer"
                     >
                       {isSendingTruth
-                        ? "Đang lưu vào biểu mẫu..."
-                        : "Gửi câu trả lời & Nhận chữ số thứ 2"}
+                        ? "Đang hoàn tất..."
+                        : "Nhận chữ số thứ 2"}
                     </button>
                   )}
                 </form>
@@ -2583,7 +2560,7 @@ function BookLetterInner({ onClose }: { onClose: () => void }) {
                 onClick={onClose}
                 className="px-5 sm:px-6 py-2.5 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
               >
-                Ẩn trang sách & Ngắm bánh 3D 🎂
+                Ẩn trang sách
               </button>
             </div>
           </div>
@@ -4014,7 +3991,7 @@ function drawFilterAccessoryOnCanvas(
   ctx.fillStyle = "#283E52";
   ctx.font = "bold 9px 'Be Vietnam Pro', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`● REC  |  BIRTHDAY STUDIO  |  19.09 ♥ 15.10`, w / 2, 19);
+  ctx.fillText(`● REC  |  BIRTHDAY STUDIO  | ♥ 19.09 ♥ `, w / 2, 19);
   ctx.restore();
 
   const flagColors = [
@@ -4765,15 +4742,15 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
               onClick={onBackToCake}
               className="px-3.5 py-2 rounded-xl bg-[#EAF1F6] hover:bg-[#D6E5F0] text-[#283E52] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>← Bánh Kem 3D</span>
+              <span>← Bánh Kem </span>
             </button>
             <div>
               <h1 className="font-serif-vn text-lg sm:text-2xl font-bold text-[#283E52]">
-                Tiệm Photobooth Sinh Nhật AR 📸🩺
+                Tiệm Photobooth Sinh Nhật 📸🩺
               </h1>
               <p className="text-[11px] sm:text-xs text-[#546E82]">
-                Làm mịn da tự nhiên & Nhận diện khuôn mặt 3D AR tự động bám
-                Filter
+                Đợi một tý cho AI nhận diện khuôn mặt AR, Test filter bên phải
+                và nhấn bắt đầu nha!
               </p>
             </div>
           </div>
@@ -4855,7 +4832,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                     onClick={handleStart8Shots}
                     className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs sm:text-sm shadow-[0_10px_25px_rgba(91,137,166,0.35)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>📸 Bắt đầu chụp 8 bức ảnh (8 giây / tấm)</span>
+                    <span>📸 Bắt đầu chụp ảnh (8 giây / tấm)</span>
                   </button>
                 ) : (
                   <div className="w-full max-w-md text-center">
@@ -4951,9 +4928,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                 </div>
 
                 <span className="text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full bg-[#EAF4EC] text-[#2E6B40] border border-[#B7DFC2]">
-                  {uploadStatus === "UPLOADING"
-                    ? "☁️ Đang lưu 8 ảnh vào Google Drive..."
-                    : "✓ Đã đồng bộ cả 8 ảnh về Google Drive"}
+                  {uploadStatus === "UPLOADING" ? "☁️..." : "✓"}
                 </span>
               </div>
 
@@ -5177,7 +5152,7 @@ function CelebrationPage({
           </h1>
         </div>
         <p className="text-[11px] sm:text-xs text-[#4A6275] mt-1.5 sm:mt-2 font-medium px-2">
-          (Chạm tay hoặc dùng chuột xoay 360° quanh chiếc bánh sinh nhật 3D)
+          (Chạm tay hoặc dùng chuột xoay 360° quanh chiếc bánh sinh nhật)
         </p>
       </header>
 
@@ -5267,7 +5242,7 @@ function CelebrationPage({
 
         {candleState === "BLOWING" && (
           <div className="px-5 sm:px-6 py-3 rounded-2xl bg-[#FAF8F2]/90 border border-[#D8E5EE] text-xs font-semibold text-[#487594] shadow-sm animate-pulse">
-            🌬️ Làn gió biển đang thổi tắt ngọn nến...
+            🌬️ Đang thổi tắt ngọn nến...
           </div>
         )}
 
