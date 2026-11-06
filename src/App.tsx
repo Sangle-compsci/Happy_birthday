@@ -31,7 +31,7 @@ const CONFIG = {
   // 0. CẤU HÌNH 2 BẢN NHẠC NỀN RIÊNG BIỆT (Trang Đăng nhập tự động tắt nhạc)
   audioConfig: {
     // <--- [CHỖ THAY BẢN NHẠC 1 - PHÁT KHI VÀO TRANG THỬ THÁCH GIẢI MÃ]:
-    gamesMp3Url: "/music/nhac-thu-thach.mp3",
+    gamesMp3Url: "/music/password.mp3",
 
     // <--- [CHỖ THAY BẢN NHẠC 2 - PHÁT KHI VÀO KHÔNG GIAN 3D & PHOTOBOOTH]:
     celebrationMp3Url: "/music/piano.mp3",
@@ -88,7 +88,7 @@ const CONFIG = {
     truthQuestions: [
       "1. Lý do lớn nhất khiến cô theo đuổi ngành Y là gì?",
       "2. Nếu ra ngoài đi ăn, cô sẽ chọn món gì để thưởng thức và tại sao?",
-      "3. Một bài hát mà cô yêu thích nhất và thường nghe đi nghe lại?",
+      "3. Một loài hoa mà cô yêu thích nhất? Tại sao?",
       "4. Một kỷ niệm mà cô nhớ mãi đến giờ?",
       "5. Nếu có thể quay ngược thời gian, cô sẽ muốn thay đổi điều gì trong quá khứ?",
       "6. Kể một vài điểm mà cô cảm thấy thích nhất ở tôi?",
