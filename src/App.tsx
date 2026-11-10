@@ -1,3 +1,6 @@
+// ============================================================================
+// PHẦN 1 / 2: DÁN ĐOẠN NÀY VÀO ĐẦU FILE src/App.tsx
+// ============================================================================
 import React, {
   useState,
   useEffect,
@@ -14,19 +17,50 @@ import {
 } from "@react-three/drei";
 
 // ============================================================================
+// HÀM TIỆN ÍCH VẼ BO GÓC CANVAS TƯƠNG THÍCH MỌI TRÌNH DUYỆT (CHROME, CỐC CỐC, EDGE)
+// ============================================================================
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radii: number | number[],
+) {
+  let tl = 0;
+  let tr = 0;
+  let br = 0;
+  let bl = 0;
+  if (typeof radii === "number") {
+    tl = tr = br = bl = radii;
+  } else if (Array.isArray(radii)) {
+    tl = radii[0] ?? 0;
+    tr = radii[1] ?? tl;
+    br = radii[2] ?? tl;
+    bl = radii[3] ?? tr;
+  }
+  const maxR = Math.min(w / 2, h / 2);
+  tl = Math.min(tl, maxR);
+  tr = Math.min(tr, maxR);
+  br = Math.min(br, maxR);
+  bl = Math.min(bl, maxR);
+
+  ctx.beginPath();
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + tr);
+  ctx.lineTo(x + w, y + h - br);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+  ctx.lineTo(x + bl, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
+  ctx.lineTo(x, y + tl);
+  ctx.quadraticCurveTo(x, y, x + tl, y);
+  ctx.closePath();
+}
+
+// ============================================================================
 // CẤU HÌNH DỮ LIỆU & TÙY CHỈNH NHANH (BẠN CHỈ CẦN SỬA NỘI DUNG Ở ĐÂY)
 // ============================================================================
-/*
-  =============================================================================
-  📌 HƯỚNG DẪN THAY 2 BẢN NHẠC NỀN (.MP3) VÀ 14 ẢNH TỪ MÁY TÍNH CÁ NHÂN:
-  =============================================================================
-  1. Trong thư mục gốc dự án của bạn (ngang hàng với thư mục `src`), có sẵn thư mục `public`.
-  2. Hãy copy 2 file nhạc (.mp3) và 14 bức ảnh vào thư mục `public`:
-     - Nhạc trang Thử thách: bỏ vào `public/music/nhac-thu-thach.mp3`
-     - Nhạc trang Không gian 3D: bỏ vào `public/music/nhac-sinh-nhat-3d.mp3`
-     - 14 bức ảnh kỷ niệm: bỏ vào `public/photos/anh-1.jpg` ... `anh-14.jpg`
-*/
-
 const CONFIG = {
   // 0. CẤU HÌNH 2 BẢN NHẠC NỀN RIÊNG BIỆT (Trang Đăng nhập tự động tắt nhạc)
   audioConfig: {
@@ -95,7 +129,7 @@ const CONFIG = {
       "7. Kể một vài điểm mà cô cảm thấy không thích ở tôi?",
       "8. Vài câu mô tả cảm xúc của cô ngày cô nhận lá thư tạm biệt của tôi?",
       "9. Sau này, cô có muốn gặp lại tôi hay không?",
-      "10. Những năm tháng ấy, đã có bao giờ rung động với tôi hay chưa?",
+      "10. Có bao giờ, thoáng trong lòng, rằng cô cũng cũng từng vấn vương mơ mộng, rằng cô cũng từng thương, cũng động lòng với tôi?",
     ],
   },
 
@@ -317,6 +351,10 @@ const CONFIG = {
         url: "/photos/pc14.jpg", // <-- Đổi thành "/photos/anh-14.jpg"
         caption: "Hạnh phúc trọn vẹn",
       },
+      {
+        url: "/photos/pc15.jpg", // <-- Đổi thành "/photos/anh-14.jpg"
+        caption: "Mãi luôn rạng ngời",
+      },
     ],
     letterTitle: "Gửi Người Đặc Biệt Trong Ngày Sinh Nhật",
     letterContent: `Chúc mừng sinh nhật bạn nhé!
@@ -424,27 +462,28 @@ async function sendToGoogleOrWebhook(payload: {
 }
 
 // ============================================================================
-// BỘ PHÁT NHẠC NỀN 2 BẢN RIÊNG BIỆT:
-// - LOGIN: Tắt hoàn toàn (Không phát nhạc)
-// - GAMES: Tự động bật `gamesMp3Url`
-// - CELEBRATION & PHOTOBOOTH: Tự động bật `celebrationMp3Url`
+// BỘ PHÁT NHẠC NỀN 2 BẢN RIÊNG BIỆT
 // ============================================================================
 function BackgroundMusicPlayer({
   screen,
+  celebrationMusicStarted,
 }: {
   screen: "LOGIN" | "GAMES" | "CELEBRATION" | "PHOTOBOOTH";
+  celebrationMusicStarted: boolean;
 }) {
   const [isMutedByUser, setIsMutedByUser] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentTrackUrlRef = useRef<string>("");
   const isMutedRef = useRef(false);
 
-  // Xác định bản nhạc cần phát dựa trên màn hình hiện tại
   const targetTrackUrl = useMemo(() => {
     if (screen === "LOGIN") return "";
     if (screen === "GAMES") return CONFIG.audioConfig.gamesMp3Url;
-    return CONFIG.audioConfig.celebrationMp3Url;
-  }, [screen]);
+    if (celebrationMusicStarted) {
+      return CONFIG.audioConfig.celebrationMp3Url;
+    }
+    return "";
+  }, [screen, celebrationMusicStarted]);
 
   const syncAndPlayTrack = useCallback((trackUrl: string) => {
     if (!trackUrl) {
@@ -456,7 +495,6 @@ function BackgroundMusicPlayer({
       return;
     }
 
-    // Nếu chuyển sang màn hình có bản nhạc khác -> Đổi source nhạc và phát từ đầu
     if (!audioRef.current || currentTrackUrlRef.current !== trackUrl) {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -470,7 +508,7 @@ function BackgroundMusicPlayer({
 
     if (!isMutedRef.current && audioRef.current.paused) {
       audioRef.current.play().catch(() => {
-        // Nếu trình duyệt di động yêu cầu chạm thêm 1 lần để unlock audio
+        // Chờ cử chỉ chạm của người dùng nếu trình duyệt chặn autoplay
       });
     }
   }, []);
@@ -511,7 +549,6 @@ function BackgroundMusicPlayer({
     };
   }, []);
 
-  // Ở Trang Đăng nhập không cần nhạc nền nên ẩn luôn nút nhạc
   if (screen === "LOGIN" || !targetTrackUrl) return null;
 
   const handleToggleButton = (e: React.MouseEvent) => {
@@ -563,193 +600,686 @@ function BackgroundMusicPlayer({
 }
 
 // ============================================================================
-// COMPONENT TRANG TRÍ: CÀNH LÁ, DÂY CỜ BUNTING & BỌT BIỂN / ÁNH SAO LẤP LÁNH
+// BỘ SƯU TẬP NHÂN VẬT THÚ CƯNG BÁC SĨ CHIBI (CÚN CON BÁC SĨ, POODLE, MÈO Y TÁ, GẤU & THỎ)
+// ============================================================================
+
+function ChibiPuppyDoctorSVG({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 130 140" fill="none">
+      <path
+        d="M92 108 Q112 98 108 86"
+        stroke="#E6B88A"
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+      <ellipse
+        cx="65"
+        cy="105"
+        rx="30"
+        ry="23"
+        fill="#FFFFFF"
+        stroke="#6B93B0"
+        strokeWidth="2.5"
+      />
+      <path d="M54 85 L65 102 L76 85 Z" fill="#88C4E8" />
+      <path
+        d="M50 88 Q65 110 80 88"
+        stroke="#487594"
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle
+        cx="72"
+        cy="104"
+        r="5"
+        fill="#FFE07D"
+        stroke="#487594"
+        strokeWidth="2"
+      />
+      <ellipse
+        cx="32"
+        cy="56"
+        rx="12"
+        ry="24"
+        transform="rotate(18 32 56)"
+        fill="#D9A36C"
+        stroke="#7A5230"
+        strokeWidth="2.5"
+      />
+      <ellipse
+        cx="98"
+        cy="56"
+        rx="12"
+        ry="24"
+        transform="rotate(-18 98 56)"
+        fill="#D9A36C"
+        stroke="#7A5230"
+        strokeWidth="2.5"
+      />
+      <ellipse
+        cx="65"
+        cy="58"
+        rx="33"
+        ry="29"
+        fill="#F2CAA0"
+        stroke="#7A5230"
+        strokeWidth="2.5"
+      />
+      <ellipse cx="65" cy="66" rx="15" ry="11" fill="#FFFDF9" />
+      <circle cx="51" cy="54" r="4" fill="#3A2518" />
+      <circle cx="79" cy="54" r="4" fill="#3A2518" />
+      <circle cx="49.8" cy="52.5" r="1.4" fill="#FFFFFF" />
+      <circle cx="77.8" cy="52.5" r="1.4" fill="#FFFFFF" />
+      <ellipse cx="65" cy="62" rx="5.5" ry="3.8" fill="#4A2F1D" />
+      <path d="M61 68 Q65 75 69 68 Z" fill="#F48CA4" />
+      <ellipse
+        cx="43"
+        cy="63"
+        rx="6"
+        ry="3.2"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <ellipse
+        cx="87"
+        cy="63"
+        rx="6"
+        ry="3.2"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <rect
+        x="46"
+        y="16"
+        width="38"
+        height="17"
+        rx="6"
+        fill="#FFFFFF"
+        stroke="#79B4D9"
+        strokeWidth="2.2"
+      />
+      <rect x="62.5" y="19.5" width="5" height="10" rx="1" fill="#FF6B8B" />
+      <rect x="60" y="22" width="10" height="5" rx="1" fill="#FF6B8B" />
+    </svg>
+  );
+}
+
+function ChibiPoodlePartySVG({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 130 140" fill="none">
+      <path
+        d="M102 45 Q98 75 88 95"
+        stroke="#9ABBD1"
+        strokeWidth="1.8"
+        fill="none"
+      />
+      <circle
+        cx="102"
+        cy="32"
+        r="15"
+        fill="#FAD2DF"
+        stroke="#FFFFFF"
+        strokeWidth="2"
+      />
+      <circle cx="97" cy="27" r="3" fill="#FFFFFF" fillOpacity="0.7" />
+      <circle
+        cx="33"
+        cy="62"
+        r="14"
+        fill="#FFFDF9"
+        stroke="#C9B39B"
+        strokeWidth="2.2"
+      />
+      <circle
+        cx="97"
+        cy="62"
+        r="14"
+        fill="#FFFDF9"
+        stroke="#C9B39B"
+        strokeWidth="2.2"
+      />
+      <ellipse
+        cx="65"
+        cy="105"
+        rx="26"
+        ry="21"
+        fill="#FFEBF0"
+        stroke="#CFA8B4"
+        strokeWidth="2.2"
+      />
+      <circle
+        cx="65"
+        cy="60"
+        r="29"
+        fill="#FFFDF9"
+        stroke="#C9B39B"
+        strokeWidth="2.2"
+      />
+      <circle cx="52" cy="36" r="11" fill="#FFFDF9" />
+      <circle cx="65" cy="34" r="12" fill="#FFFDF9" />
+      <circle cx="78" cy="36" r="11" fill="#FFFDF9" />
+      <circle cx="53" cy="58" r="3.6" fill="#3A2518" />
+      <circle cx="77" cy="58" r="3.6" fill="#3A2518" />
+      <circle cx="52" cy="56.5" r="1.2" fill="#FFFFFF" />
+      <circle cx="76" cy="56.5" r="1.2" fill="#FFFFFF" />
+      <ellipse cx="65" cy="64" rx="4.5" ry="3.2" fill="#4A2F1D" />
+      <ellipse
+        cx="45"
+        cy="65"
+        rx="5.5"
+        ry="3"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <ellipse
+        cx="85"
+        cy="65"
+        rx="5.5"
+        ry="3"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <ellipse
+        cx="58"
+        cy="87"
+        rx="7"
+        ry="4"
+        transform="rotate(-15 58 87)"
+        fill="#79B4D9"
+      />
+      <ellipse
+        cx="72"
+        cy="87"
+        rx="7"
+        ry="4"
+        transform="rotate(15 72 87)"
+        fill="#79B4D9"
+      />
+      <circle cx="65" cy="87" r="3.5" fill="#FFF8E7" />
+    </svg>
+  );
+}
+
+function ChibiKittyDoctorSVG({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 125 135" fill="none">
+      <polygon
+        points="34,48 36,20 56,36"
+        fill="#FFF7EB"
+        stroke="#B0967E"
+        strokeWidth="2.4"
+      />
+      <polygon points="38,44 39,26 52,37" fill="#FAD2DF" />
+      <polygon
+        points="91,48 89,20 69,36"
+        fill="#FFF7EB"
+        stroke="#B0967E"
+        strokeWidth="2.4"
+      />
+      <polygon points="87,44 86,26 73,37" fill="#FAD2DF" />
+      <ellipse
+        cx="62"
+        cy="102"
+        rx="26"
+        ry="20"
+        fill="#FFFFFF"
+        stroke="#8CA6B8"
+        strokeWidth="2.4"
+      />
+      <ellipse
+        cx="62"
+        cy="60"
+        rx="31"
+        ry="26"
+        fill="#FFF7EB"
+        stroke="#B0967E"
+        strokeWidth="2.4"
+      />
+      <path
+        d="M35 48 Q62 36 89 48"
+        stroke="#5B89A6"
+        strokeWidth="3"
+        fill="none"
+      />
+      <circle
+        cx="62"
+        cy="40"
+        r="8.5"
+        fill="#D2ECFA"
+        stroke="#FFFFFF"
+        strokeWidth="2.2"
+      />
+      <circle cx="49" cy="60" r="3.6" fill="#283E52" />
+      <circle cx="75" cy="60" r="3.6" fill="#283E52" />
+      <circle cx="48" cy="58.5" r="1.2" fill="#FFFFFF" />
+      <circle cx="74" cy="58.5" r="1.2" fill="#FFFFFF" />
+      <circle cx="62" cy="65" r="3" fill="#F08099" />
+      <line
+        x1="24"
+        y1="62"
+        x2="36"
+        y2="64"
+        stroke="#B0967E"
+        strokeWidth="1.8"
+      />
+      <line
+        x1="24"
+        y1="68"
+        x2="36"
+        y2="68"
+        stroke="#B0967E"
+        strokeWidth="1.8"
+      />
+      <line
+        x1="100"
+        y1="62"
+        x2="88"
+        y2="64"
+        stroke="#B0967E"
+        strokeWidth="1.8"
+      />
+      <line
+        x1="100"
+        y1="68"
+        x2="88"
+        y2="68"
+        stroke="#B0967E"
+        strokeWidth="1.8"
+      />
+      <rect x="55" y="94" width="14" height="14" rx="4" fill="#FAD2DF" />
+      <rect x="60.5" y="97" width="3" height="8" fill="#FF6B8B" />
+      <rect x="58" y="99.5" width="8" height="3" fill="#FF6B8B" />
+    </svg>
+  );
+}
+
+function ChibiBearMascotSVG({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 120 130" fill="none">
+      <circle
+        cx="32"
+        cy="36"
+        r="14"
+        fill="#D9AB82"
+        stroke="#7A5230"
+        strokeWidth="2.5"
+      />
+      <circle cx="32" cy="36" r="7" fill="#F7E1CC" />
+      <circle
+        cx="88"
+        cy="36"
+        r="14"
+        fill="#D9AB82"
+        stroke="#7A5230"
+        strokeWidth="2.5"
+      />
+      <circle cx="88" cy="36" r="7" fill="#F7E1CC" />
+      <ellipse
+        cx="60"
+        cy="100"
+        rx="28"
+        ry="22"
+        fill="#FFFFFF"
+        stroke="#6B93B0"
+        strokeWidth="2.5"
+      />
+      <path d="M50 82 L60 98 L70 82 Z" fill="#88C4E8" />
+      <circle
+        cx="60"
+        cy="58"
+        r="32"
+        fill="#E0B48B"
+        stroke="#7A5230"
+        strokeWidth="2.5"
+      />
+      <ellipse cx="60" cy="66" rx="14" ry="10.5" fill="#FFF9F2" />
+      <circle cx="47" cy="54" r="3.8" fill="#3A2518" />
+      <circle cx="73" cy="54" r="3.8" fill="#3A2518" />
+      <circle cx="45.8" cy="52.5" r="1.3" fill="#FFFFFF" />
+      <circle cx="71.8" cy="52.5" r="1.3" fill="#FFFFFF" />
+      <ellipse cx="60" cy="63" rx="5" ry="3.5" fill="#5C3A21" />
+      <ellipse
+        cx="40"
+        cy="62"
+        rx="6"
+        ry="3.5"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <ellipse
+        cx="80"
+        cy="62"
+        rx="6"
+        ry="3.5"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <polygon
+        points="44,29 60,4 76,29"
+        fill="#88C4E8"
+        stroke="#FFFFFF"
+        strokeWidth="2.5"
+      />
+      <circle cx="60" cy="4" r="5.5" fill="#FFE07D" />
+    </svg>
+  );
+}
+
+function ChibiBunnyMascotSVG({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 120 135" fill="none">
+      <ellipse
+        cx="45"
+        cy="28"
+        rx="10"
+        ry="24"
+        transform="rotate(-12 45 28)"
+        fill="#FFFFFF"
+        stroke="#CFA8B4"
+        strokeWidth="2.5"
+      />
+      <ellipse
+        cx="45"
+        cy="30"
+        rx="5"
+        ry="15"
+        transform="rotate(-12 45 30)"
+        fill="#FAD2DF"
+      />
+      <ellipse
+        cx="75"
+        cy="28"
+        rx="10"
+        ry="24"
+        transform="rotate(12 75 28)"
+        fill="#FFFFFF"
+        stroke="#CFA8B4"
+        strokeWidth="2.5"
+      />
+      <ellipse
+        cx="75"
+        cy="30"
+        rx="5"
+        ry="15"
+        transform="rotate(12 75 30)"
+        fill="#FAD2DF"
+      />
+      <ellipse
+        cx="60"
+        cy="104"
+        rx="25"
+        ry="20"
+        fill="#FFE8F0"
+        stroke="#CFA8B4"
+        strokeWidth="2.5"
+      />
+      <ellipse
+        cx="60"
+        cy="66"
+        rx="30"
+        ry="26"
+        fill="#FFFFFF"
+        stroke="#CFA8B4"
+        strokeWidth="2.5"
+      />
+      <circle cx="48" cy="64" r="3.6" fill="#3A2E2B" />
+      <circle cx="72" cy="64" r="3.6" fill="#3A2E2B" />
+      <circle cx="47" cy="62.5" r="1.2" fill="#FFFFFF" />
+      <circle cx="71" cy="62.5" r="1.2" fill="#FFFFFF" />
+      <circle cx="60" cy="70" r="3.2" fill="#F28B9F" />
+      <ellipse
+        cx="41"
+        cy="71"
+        rx="6"
+        ry="3.2"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <ellipse
+        cx="79"
+        cy="71"
+        rx="6"
+        ry="3.2"
+        fill="#F497B0"
+        fillOpacity="0.55"
+      />
+      <ellipse
+        cx="52"
+        cy="42"
+        rx="8"
+        ry="5"
+        transform="rotate(-20 52 42)"
+        fill="#F497B0"
+      />
+      <ellipse
+        cx="68"
+        cy="42"
+        rx="8"
+        ry="5"
+        transform="rotate(20 68 42)"
+        fill="#F497B0"
+      />
+      <circle cx="60" cy="42" r="4" fill="#FFF8E7" />
+    </svg>
+  );
+}
+
+// ============================================================================
+// COMPONENT BACKGROUND PHÒNG TIỆC SINH NHẬT THÚ CƯNG BÁC SĨ CHIBI CẦU KỲ NHƯNG DỊU MẮT
 // ============================================================================
 function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
+  const floatingBadges = useMemo(() => {
+    const items = [
+      { icon: "🐶", label: "Dr", bg: "#EBF5FC", border: "#B8D8EE" },
+      { icon: "🩺", label: "Happy Care", bg: "#FFF0F5", border: "#F4C2D2" },
+      { icon: "🎂", label: "Sweet 19.09", bg: "#FFF9E6", border: "#F2D99B" },
+      { icon: "🐾", label: "Cute Paws", bg: "#EBF7EE", border: "#B9E0C5" },
+      { icon: "💊", label: "100% Joy", bg: "#F3EEFC", border: "#D4C4F0" },
+      { icon: "🎀", label: "Coquette", bg: "#FFF0F5", border: "#F4C2D2" },
+    ];
+    return items.map((it, idx) => ({
+      ...it,
+      id: idx,
+      left:
+        idx % 2 === 0 ? `${3 + ((idx * 3) % 8)}%` : `${84 + ((idx * 2) % 9)}%`,
+      top: `${22 + idx * 11}%`,
+      delay: `${idx * 0.8}s`,
+      duration: `${6 + (idx % 3) * 1.5}s`,
+    }));
+  }, []);
+
   const particles = useMemo(() => {
-    return Array.from({ length: 18 }).map((_, i) => ({
+    const icons = ["🐾", "🩺", "🎂", "🎈", "💊", "🎀", "🧁", "🎁", "🫧", "✦"];
+    return Array.from({ length: 24 }).map((_, i) => ({
       id: i,
-      left: `${(i * 19 + 7) % 94}%`,
-      top: `${(i * 29 + 11) % 88}%`,
-      size: 4 + (i % 3) * 3,
-      delay: `${(i * 0.7) % 5}s`,
-      duration: `${6 + (i % 5) * 2}s`,
-      type: i % 4 === 0 ? "shell" : i % 3 === 0 ? "sparkle" : "dot",
+      left: `${(i * 19 + 4) % 95}%`,
+      top: `${(i * 23 + 8) % 90}%`,
+      size: 5 + (i % 3) * 3,
+      delay: `${(i * 0.5) % 5}s`,
+      duration: `${6 + (i % 4) * 2}s`,
+      icon: icons[i % icons.length],
+      isIcon: i % 2 === 0,
     }));
   }, []);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+      <div
+        className="absolute inset-0 opacity-45"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(90deg, rgba(207, 226, 238, 0.22) 0px, rgba(207, 226, 238, 0.22) 28px, transparent 28px, transparent 56px),
+            radial-gradient(#9EC2DA 1.3px, transparent 1.3px),
+            radial-gradient(#F4B8C8 1.3px, transparent 1.3px)
+          `,
+          backgroundSize: "56px 100%, 36px 36px, 36px 36px",
+          backgroundPosition: "0 0, 0 0, 18px 18px",
+        }}
+      />
+
       <svg
-        className="absolute -top-6 -left-6 w-40 h-40 sm:w-56 sm:h-56 md:w-72 md:h-72 text-[#5B89A6]/15 transform -rotate-12"
-        viewBox="0 0 200 200"
-        fill="none"
+        className="absolute top-0 left-0 h-full w-24 sm:w-40 md:w-52 text-[#DCEBF5]/65 hidden sm:block"
+        viewBox="0 0 160 800"
+        preserveAspectRatio="none"
       >
         <path
-          d="M10,10 Q70,70 160,150"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        <ellipse
-          cx="45"
-          cy="30"
-          rx="18"
-          ry="10"
-          transform="rotate(-25 45 30)"
+          d="M0,0 L150,0 Q95,180 65,360 Q35,540 90,800 L0,800 Z"
           fill="currentColor"
         />
-        <ellipse
-          cx="30"
-          cy="55"
-          rx="16"
-          ry="9"
-          transform="rotate(35 30 55)"
-          fill="currentColor"
+        <path
+          d="M0,0 L110,0 Q65,200 40,360 Q15,520 55,800 L0,800 Z"
+          fill="#FCE8F0"
+          fillOpacity="0.55"
         />
-        <ellipse
-          cx="78"
-          cy="58"
-          rx="22"
-          ry="11"
-          transform="rotate(-30 78 58)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="62"
-          cy="88"
-          rx="20"
-          ry="10"
-          transform="rotate(30 62 88)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="115"
-          cy="90"
-          rx="22"
-          ry="11"
-          transform="rotate(-35 115 90)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="95"
-          cy="122"
-          rx="19"
-          ry="9"
-          transform="rotate(25 95 122)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="148"
-          cy="126"
-          rx="17"
-          ry="8"
-          transform="rotate(-30 148 126)"
-          fill="currentColor"
-        />
+        <circle cx="52" cy="360" r="14" fill="#F4A6B8" />
+        <circle cx="52" cy="360" r="6" fill="#FFFDF9" />
       </svg>
 
       <svg
-        className="absolute -bottom-8 -right-8 w-44 h-44 sm:w-64 sm:h-64 md:w-80 md:h-80 text-[#5B89A6]/15 transform rotate-165"
-        viewBox="0 0 200 200"
+        className="absolute top-0 right-0 h-full w-24 sm:w-40 md:w-52 text-[#DCEBF5]/65 hidden sm:block"
+        viewBox="0 0 160 800"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M160,0 L10,0 Q65,180 95,360 Q125,540 70,800 L160,800 Z"
+          fill="currentColor"
+        />
+        <path
+          d="M160,0 L50,0 Q95,200 120,360 Q145,520 105,800 L160,800 Z"
+          fill="#FCE8F0"
+          fillOpacity="0.55"
+        />
+        <circle cx="108" cy="360" r="14" fill="#88C4E8" />
+        <circle cx="108" cy="360" r="6" fill="#FFFDF9" />
+      </svg>
+
+      <svg
+        className="absolute top-12 left-1/2 -translate-x-1/2 w-[540px] sm:w-[760px] h-48 opacity-35"
+        viewBox="0 0 800 220"
         fill="none"
       >
         <path
-          d="M190,190 Q130,130 40,50"
-          stroke="currentColor"
-          strokeWidth="2.5"
+          d="M120,210 A280,200 0 0,1 680,210"
+          stroke="#FAD2DF"
+          strokeWidth="14"
           strokeLinecap="round"
         />
-        <ellipse
-          cx="155"
-          cy="170"
-          rx="18"
-          ry="10"
-          transform="rotate(-25 155 170)"
-          fill="currentColor"
+        <path
+          d="M140,210 A260,182 0 0,1 660,210"
+          stroke="#FFF2C6"
+          strokeWidth="14"
+          strokeLinecap="round"
         />
-        <ellipse
-          cx="170"
-          cy="145"
-          rx="16"
-          ry="9"
-          transform="rotate(35 170 145)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="122"
-          cy="142"
-          rx="22"
-          ry="11"
-          transform="rotate(-30 122 142)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="138"
-          cy="112"
-          rx="20"
-          ry="10"
-          transform="rotate(30 138 112)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="85"
-          cy="110"
-          rx="22"
-          ry="11"
-          transform="rotate(-35 85 110)"
-          fill="currentColor"
-        />
-        <ellipse
-          cx="105"
-          cy="78"
-          rx="19"
-          ry="9"
-          transform="rotate(25 105 78)"
-          fill="currentColor"
+        <path
+          d="M160,210 A240,164 0 0,1 640,210"
+          stroke="#CFE8FA"
+          strokeWidth="14"
+          strokeLinecap="round"
         />
       </svg>
 
       {showBunting && (
-        <div className="absolute top-0 left-0 right-0 flex justify-between overflow-hidden opacity-65">
+        <div className="absolute top-0 left-0 right-0 flex flex-col justify-between overflow-hidden">
           <svg
-            className="w-full h-12 sm:h-16 md:h-20"
-            viewBox="0 0 1200 90"
+            className="w-full h-14 sm:h-20 md:h-24"
+            viewBox="0 0 1200 105"
             preserveAspectRatio="none"
           >
             <path
-              d="M0,5 Q300,65 600,15 Q900,65 1200,5"
-              stroke="#B4CCE0"
-              strokeWidth="2"
+              d="M0,6 Q300,68 600,16 Q900,68 1200,6"
+              stroke="#9ABBD1"
+              strokeWidth="2.2"
               fill="none"
             />
             {[
-              { x: 60, y: 18, c: "#CFE2EE" },
-              { x: 140, y: 30, c: "#EFE7D6" },
-              { x: 220, y: 38, c: "#9EC2DA" },
-              { x: 300, y: 40, c: "#E8DFCA" },
-              { x: 380, y: 36, c: "#CFE2EE" },
-              { x: 460, y: 28, c: "#EFE7D6" },
-              { x: 540, y: 19, c: "#9EC2DA" },
-              { x: 660, y: 22, c: "#CFE2EE" },
-              { x: 740, y: 32, c: "#E8DFCA" },
-              { x: 820, y: 39, c: "#9EC2DA" },
-              { x: 900, y: 40, c: "#EFE7D6" },
-              { x: 980, y: 35, c: "#CFE2EE" },
-              { x: 1060, y: 26, c: "#E8DFCA" },
-              { x: 1140, y: 15, c: "#9EC2DA" },
+              { x: 55, y: 16, c: "#B8DCF0" },
+              { x: 130, y: 29, c: "#FADCE6" },
+              { x: 205, y: 37, c: "#FFF0C4" },
+              { x: 280, y: 40, c: "#9EC2DA" },
+              { x: 355, y: 38, c: "#D4F0E0" },
+              { x: 430, y: 31, c: "#FADCE6" },
+              { x: 505, y: 22, c: "#B8DCF0" },
+              { x: 580, y: 17, c: "#FFF0C4" },
+              { x: 655, y: 21, c: "#FADCE6" },
+              { x: 730, y: 31, c: "#9EC2DA" },
+              { x: 805, y: 38, c: "#D4F0E0" },
+              { x: 880, y: 40, c: "#FFF0C4" },
+              { x: 955, y: 36, c: "#FADCE6" },
+              { x: 1030, y: 28, c: "#B8DCF0" },
+              { x: 1105, y: 18, c: "#D4F0E0" },
             ].map((flag, idx) => (
               <polygon
                 key={idx}
-                points={`${flag.x - 18},${flag.y} ${flag.x + 18},${flag.y} ${flag.x},${flag.y + 34}`}
+                points={`${flag.x - 20},${flag.y} ${flag.x + 20},${flag.y} ${flag.x},${
+                  flag.y + 36
+                }`}
                 fill={flag.c}
                 stroke="#FFFFFF"
-                strokeWidth="1.5"
+                strokeWidth="1.8"
               />
             ))}
+
+            <path
+              d="M0,18 Q200,52 400,20 Q600,52 800,20 Q1000,52 1200,18"
+              stroke="#D4B886"
+              strokeWidth="1.2"
+              strokeDasharray="4 2"
+              fill="none"
+            />
+            {[95, 195, 295, 395, 495, 595, 695, 795, 895, 995, 1095].map(
+              (lx, idx) => {
+                const ly = idx % 2 === 0 ? 35 : 24;
+                return (
+                  <g key={lx}>
+                    <circle
+                      cx={lx}
+                      cy={ly}
+                      r="8"
+                      fill="#FFE599"
+                      fillOpacity="0.45"
+                    />
+                    <circle
+                      cx={lx}
+                      cy={ly}
+                      r="4"
+                      fill="#FFFDF5"
+                      stroke="#E5B95C"
+                      strokeWidth="1"
+                    />
+                  </g>
+                );
+              },
+            )}
           </svg>
         </div>
       )}
+
+      {floatingBadges.map((b) => (
+        <div
+          key={b.id}
+          style={{
+            left: b.left,
+            top: b.top,
+            backgroundColor: b.bg,
+            borderColor: b.border,
+            animationDelay: b.delay,
+            animationDuration: b.duration,
+          }}
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 shadow-sm absolute animate-floatSparkle opacity-80"
+        >
+          <span className="text-sm">{b.icon}</span>
+          <span className="text-[10px] font-bold text-[#3A566B] tracking-wide">
+            {b.label}
+          </span>
+        </div>
+      ))}
+
+      <ChibiPuppyDoctorSVG className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 absolute bottom-2 left-1 sm:left-4 opacity-90 drop-shadow-md animate-floatSparkle" />
+      <ChibiBearMascotSVG className="w-24 h-24 md:w-28 md:h-28 absolute bottom-2 left-32 md:left-40 opacity-80 drop-shadow-sm hidden lg:block animate-floatSparkle" />
+      <ChibiPoodlePartySVG className="w-20 h-20 sm:w-26 sm:h-26 md:w-28 md:h-28 absolute top-24 left-2 sm:left-8 opacity-75 drop-shadow-sm hidden sm:block animate-floatSparkle" />
+      <ChibiKittyDoctorSVG className="w-20 h-20 sm:w-26 sm:h-26 md:w-28 md:h-28 absolute top-28 right-2 sm:right-8 opacity-75 drop-shadow-sm hidden sm:block animate-floatSparkle" />
+      <ChibiBunnyMascotSVG className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 absolute bottom-2 right-12 sm:right-20 opacity-90 drop-shadow-md animate-floatSparkle" />
 
       {particles.map((p) => (
         <div
@@ -762,14 +1292,14 @@ function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
           }}
           className="absolute animate-floatSparkle"
         >
-          {p.type === "shell" ? (
-            <span className="text-[#5B89A6]/35 text-xs select-none">🫧</span>
-          ) : p.type === "sparkle" ? (
-            <span className="text-[#C8B282]/55 text-xs select-none">✦</span>
+          {p.isIcon ? (
+            <span className="text-xs sm:text-sm opacity-45 select-none">
+              {p.icon}
+            </span>
           ) : (
             <div
               style={{ width: p.size, height: p.size }}
-              className="rounded-full bg-[#7BA7C4]/35 blur-[0.5px]"
+              className="rounded-full bg-[#7BA7C4]/40 blur-[0.5px]"
             />
           )}
         </div>
@@ -779,7 +1309,7 @@ function AmbientDecorations({ showBunting = true }: { showBunting?: boolean }) {
 }
 
 // ============================================================================
-// COMPONENT 1: TRANG ĐĂNG NHẬP (TỐI ƯU RESPONSIVE MOBILE & DESKTOP, KHÔNG NHẠC)
+// COMPONENT 1: TRANG ĐĂNG NHẬP (PHONG CÁCH THÚ CƯNG BÁC SĨ CHIBI ĐÁNG YÊU)
 // ============================================================================
 function Login({
   onLoginSuccess,
@@ -813,42 +1343,49 @@ function Login({
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 sm:py-12 relative overflow-hidden">
-      <div className="w-72 h-72 sm:w-96 sm:h-96 bg-[#D2E4F0]/60 rounded-full blur-3xl absolute -top-20 -left-20 pointer-events-none" />
-      <div className="w-72 h-72 sm:w-96 sm:h-96 bg-[#EFE8D8]/80 rounded-full blur-3xl absolute -bottom-20 -right-20 pointer-events-none" />
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-10 sm:py-14 relative overflow-hidden">
+      <div className="w-72 h-72 sm:w-96 sm:h-96 bg-[#C9E2F5]/65 rounded-full blur-3xl absolute -top-16 -left-16 pointer-events-none" />
+      <div className="w-72 h-72 sm:w-96 sm:h-96 bg-[#FCE0EA]/65 rounded-full blur-3xl absolute -bottom-16 -right-16 pointer-events-none" />
 
-      <div className="w-full max-w-md bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] rounded-[2rem] sm:rounded-[2.25rem] shadow-[0_24px_60px_rgba(52,82,108,0.1)] p-6 sm:p-8 md:p-10 relative z-10 transition-all duration-500">
-        <div className="absolute inset-2.5 sm:inset-3 border border-[#E5DEC9]/70 rounded-[1.5rem] sm:rounded-[1.75rem] pointer-events-none" />
+      <div className="w-full max-w-md bg-[#FAF8F2]/95 backdrop-blur-md border-2 border-[#CFE2EE] rounded-[2.2rem] shadow-[0_24px_60px_rgba(52,82,108,0.13)] p-6 sm:p-8 md:p-10 relative z-10 transition-all duration-500">
+        <div className="absolute inset-2.5 sm:inset-3 border-2 border-dashed border-[#DFC8D2]/80 rounded-[1.7rem] pointer-events-none" />
+
+        <div className="absolute -top-5 -left-3 sm:-left-4 w-12 h-12 rounded-2xl bg-[#FFFDF9] border-2 border-[#F4B8C8] shadow-md flex items-center justify-center text-2xl transform -rotate-12 select-none">
+          🐶
+        </div>
+        <div className="absolute -top-5 -right-3 sm:-right-4 w-12 h-12 rounded-2xl bg-[#FFFDF9] border-2 border-[#9EC2DA] shadow-md flex items-center justify-center text-2xl transform rotate-12 select-none">
+          🎂
+        </div>
 
         <div className="text-center mb-6 sm:mb-7 relative">
           <div className="relative inline-flex items-center justify-center mb-2.5 sm:mb-3">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#6B9BB8] to-[#487594] shadow-[0_6px_18px_rgba(72,117,148,0.35)] flex items-center justify-center border-2 border-[#E6DFC8]">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-dashed border-[#FAF8F2]/60 flex items-center justify-center">
-                <span className="text-xl sm:text-2xl select-none">🌊</span>
+            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-gradient-to-br from-[#76A8C7] via-[#5B89A6] to-[#487594] shadow-[0_8px_20px_rgba(72,117,148,0.35)] flex items-center justify-center border-2 border-[#FFF8E7]">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-dashed border-white/75 flex items-center justify-center">
+                <span className="text-2xl sm:text-3xl select-none">🩺</span>
               </div>
             </div>
-            <span className="absolute -right-3 -top-1 text-[#C8A96E] text-sm animate-pulse">
-              ✦
+            <span className="absolute -right-4 -top-1 text-base animate-bounce select-none">
+              🐾
             </span>
-            <span className="absolute -left-3 bottom-0 text-[#5B89A6] text-xs animate-pulse">
-              ✦
+            <span className="absolute -left-4 bottom-0 text-sm animate-pulse select-none">
+              ✨
             </span>
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="h-[1px] w-6 sm:w-8 bg-[#C4D6E3]" />
-            <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-[#5C7F96] font-semibold">
-              Thiệp Mời Đặc Biệt
+            <span className="h-[1.5px] w-6 sm:w-8 bg-[#B8D2E3]" />
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-[#4A7896] font-bold">
+              Birthday Party
             </span>
-            <span className="h-[1px] w-6 sm:w-8 bg-[#C4D6E3]" />
+            <span className="h-[1.5px] w-6 sm:w-8 bg-[#B8D2E3]" />
           </div>
 
-          <h1 className="font-serif-vn text-2xl sm:text-3xl font-semibold text-[#283E52] tracking-tight">
-            Cánh Cửa Sinh Nhật
+          <h1 className="font-serif-vn text-2xl sm:text-3xl font-bold text-[#283E52] tracking-tight">
+            Bữa Tiệc Sinh Nhật
           </h1>
-          <p className="text-xs sm:text-sm text-[#5E768A] mt-1.5 sm:mt-2 leading-relaxed px-2">
-            Nhập mã kỷ niệm để bước vào không gian dành riêng cho cô gái đặc
-            biệt ngày hôm nay!
+          <p className="text-xs sm:text-sm text-[#546E82] mt-1.5 leading-relaxed px-2">
+            Nhập mật mã để bước vào không gian dánh riêng cho cô gái đặc biệt
+            ngày hôm nay
           </p>
         </div>
 
@@ -867,10 +1404,10 @@ function Login({
         >
           <div>
             <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
-              <label className="block text-[11px] sm:text-xs uppercase tracking-wider text-[#546E82] font-semibold">
+              <label className="block text-xs uppercase tracking-wider text-[#3A566B] font-bold">
                 Tên đăng nhập
               </label>
-              <span className="text-[11px] sm:text-xs text-[#487594] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-medium border border-[#C8DCEB]">
+              <span className="text-[11px] sm:text-xs text-[#3A627D] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-semibold border border-[#C8DCEB]">
                 💡 Gợi ý: {CONFIG.auth.usernameHint}
               </span>
             </div>
@@ -880,16 +1417,16 @@ function Login({
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Nhập 4 chữ số..."
-              className="w-full px-4 py-3 rounded-xl bg-white/95 border border-[#D2E0EB] text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] focus:ring-2 focus:ring-[#5B89A6]/20 transition-all text-base sm:text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-white border-2 border-[#C8DCEB] text-[#1D3040] caret-[#1D3040] placeholder-[#8CA3B3] focus:outline-none focus:border-[#487594] focus:ring-4 focus:ring-[#5B89A6]/15 transition-all text-base sm:text-sm font-medium cursor-text"
             />
           </div>
 
           <div>
             <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
-              <label className="block text-[11px] sm:text-xs uppercase tracking-wider text-[#546E82] font-semibold">
+              <label className="block text-xs uppercase tracking-wider text-[#3A566B] font-bold">
                 Mật khẩu
               </label>
-              <span className="text-[11px] sm:text-xs text-[#487594] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-medium border border-[#C8DCEB]">
+              <span className="text-[11px] sm:text-xs text-[#3A627D] bg-[#E8F1F7] px-2.5 py-0.5 rounded-full font-semibold border border-[#C8DCEB]">
                 💡 Gợi ý: {CONFIG.auth.passwordHint}
               </span>
             </div>
@@ -899,7 +1436,7 @@ function Login({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Nhập mật khẩu 4 chữ số..."
-              className="w-full px-4 py-3 rounded-xl bg-white/95 border border-[#D2E0EB] text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] focus:ring-2 focus:ring-[#5B89A6]/20 transition-all text-base sm:text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-white border-2 border-[#C8DCEB] text-[#1D3040] caret-[#1D3040] placeholder-[#8CA3B3] focus:outline-none focus:border-[#487594] focus:ring-4 focus:ring-[#5B89A6]/15 transition-all text-base sm:text-sm font-medium cursor-text"
             />
           </div>
 
@@ -912,18 +1449,19 @@ function Login({
           <div className="pt-1.5 flex flex-col gap-2.5 sm:gap-3">
             <button
               type="submit"
-              className="w-full py-3.5 px-6 rounded-xl bg-[#5B89A6] hover:bg-[#487594] active:scale-[0.99] text-white font-medium text-sm shadow-[0_8px_20px_rgba(91,137,166,0.28)] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-xl bg-[#5B89A6] hover:bg-[#487594] active:scale-[0.99] text-white font-semibold text-sm shadow-[0_8px_20px_rgba(91,137,166,0.3)] transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>Mở Cửa Không Gian</span>
+              <span>🎂</span>
+              <span>Bước Vào Bữa Tiệc</span>
               <span>✨</span>
             </button>
 
             <button
               type="button"
               onClick={onGoToGames}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#F0ECE1]/80 hover:bg-[#E4EEF5] text-[#486880] hover:text-[#283E52] font-medium text-xs transition-all cursor-pointer border border-transparent hover:border-[#C2D6E5]"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#F0ECE1] hover:bg-[#E4EEF5] text-[#3A566B] hover:text-[#1D3040] font-semibold text-xs transition-all cursor-pointer border border-[#D8E2E9]"
             >
-              Bạn quên mật khẩu? / Lấy gợi ý mật khẩu 🗝️
+              Bạn quên mật khẩu? / Chơi Mini-games lấy mật khẩu 🗝️
             </button>
           </div>
         </form>
@@ -931,9 +1469,12 @@ function Login({
     </div>
   );
 }
+// ============================================================================
+// PHẦN 2 / 2: DÁN ĐOẠN NÀY NỐI TIẾP NGAY BÊN DƯỚI PHẦN 1 TRONG FILE src/App.tsx
+// ============================================================================
 
 // ============================================================================
-// MINI-GAME 2A: FLAPPY BIRD (HỖ TRỢ CHẠM CẢM ỨNG ĐIỆN THOẠI & PHÍM SPACE)
+// MINI-GAME 2A: FLAPPY BIRD (KHÓA CỨNG TẠI 49 ĐIỂM)
 // ============================================================================
 interface FlappyPipe {
   x: number;
@@ -1390,7 +1931,7 @@ function FlappyBirdGame({
 }
 
 // ============================================================================
-// COMPONENT 2: TRANG GIẢI MÃ (RESPONSIVE CHO CẢ ĐIỆN THOẠI & MÁY TÍNH)
+// COMPONENT 2: TRANG GIẢI MÃ (HEADER GHIM CỨNG FIXED Ở ĐẦU TRANG KHI CUỘN)
 // ============================================================================
 function GameBoard({
   unlockedDigits,
@@ -1463,12 +2004,17 @@ function GameBoard({
     }
   };
 
+  const filledTruthCount = useMemo(
+    () => truthAnswers.filter((ans) => ans.trim().length > 0).length,
+    [truthAnswers],
+  );
+
   const handleTruthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const hasEmpty = truthAnswers.some((ans) => !ans.trim());
     if (hasEmpty) {
       setTruthError(
-        "Bạn hãy điền đầy đủ cả 7 câu trả lời thật lòng trước khi gửi nhé!",
+        `Bạn mới điền ${filledTruthCount}/${CONFIG.game2.truthQuestions.length} câu. Hãy điền đầy đủ cả 10 câu trả lời thật lòng trước khi gửi nhé!`,
       );
       return;
     }
@@ -1549,23 +2095,24 @@ function GameBoard({
 
   return (
     <div className="min-h-[100dvh] pb-24 relative z-10">
-      <header className="sticky top-0 z-30 bg-[#FAF8F2]/95 backdrop-blur-md border-b border-[#D8E5EE] shadow-sm">
+      {/* HEADER ĐƯỢC GHIM CỨNG TUYỆT ĐỐI (fixed top-0 left-0 right-0 z-50) ĐỂ KHÔNG BAO GIỜ BỊ CUỘN TRÔI */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAF8F2]/95 backdrop-blur-md border-b-2 border-[#CFE2EE] shadow-[0_6px_20px_rgba(40,62,82,0.08)]">
         <div className="max-w-3xl mx-auto px-3.5 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onBackToLogin}
-              className="text-xs font-medium text-[#486880] hover:text-[#283E52] px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#EAF1F6] hover:bg-[#DAE7F0] transition-colors cursor-pointer"
+              className="text-xs font-semibold text-[#3A566B] hover:text-[#1D3040] px-3 py-1.5 rounded-xl bg-[#EAF1F6] hover:bg-[#D5E5F2] border border-[#C5D8E8] transition-colors cursor-pointer"
             >
               ← Đăng nhập
             </button>
-            <span className="text-xs text-[#647F94] hidden md:inline">
-              Hoàn thành lần lượt 4 thử thách để tìm mật khẩu
+            <span className="text-xs font-medium text-[#546E82] hidden md:inline">
+              Giải mã lần lượt 4 thử thách để mở khóa mật khẩu
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-[#486880]">
-              Mật khẩu:
+            <span className="text-[11px] sm:text-xs uppercase tracking-wider font-bold text-[#3A566B]">
+              Mật khẩu của bạn:
             </span>
             <div className="flex items-center gap-1.5 sm:gap-2">
               {unlockedDigits.map((digit, idx) => (
@@ -1589,15 +2136,15 @@ function GameBoard({
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3.5 sm:px-4 pt-5 sm:pt-7">
-        {/* Lưới 2 cột trên điện thoại, 4 cột trên máy tính để không bị tràn chữ */}
+      {/* Khoảng đệm pt-24 sm:pt-28 bù cho thanh Header fixed phía trên */}
+      <main className="max-w-2xl mx-auto px-3.5 sm:px-4 pt-24 sm:pt-28">
         <div className="mb-5 sm:mb-7">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
             {[
               { idx: 0, label: "Màn 1: Trắc nghiệm" },
               { idx: 1, label: "Màn 2: Thật / Thách" },
               { idx: 2, label: "Màn 3: Triệu Phú" },
-              { idx: 3, label: "Màn 4: Đếm" },
+              { idx: 3, label: "Màn 4: Giải Toán" },
             ].map((tab) => {
               const done = unlockedDigits[tab.idx] !== null;
               const active = currentStep === tab.idx;
@@ -1757,33 +2304,33 @@ function GameBoard({
                 Thật hay Thách?
               </h3>
               <p className="text-xs sm:text-sm text-[#4A6275] mb-5 leading-relaxed">
-                Chọn <strong>Thật</strong> để trả lời 10 câu hỏi một cách thật
-                lòng, hoặc chọn <strong>Thách</strong> để vượt qua 50 chướng
-                ngại vật Flappy Bird!
+                Chọn <strong>Thật</strong> để trả lời thật lòng 10 câu hỏi, hoặc
+                chọn <strong>Thách</strong> để vượt qua 50 chướng ngại vật
+                Flappy Bird!
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-5 sm:mb-6">
                 <button
                   type="button"
                   onClick={() => setG2Mode("TRUTH")}
-                  className={`py-3 px-4 rounded-2xl text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
+                  className={`py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-semibold border-2 transition-all cursor-pointer ${
                     g2Mode === "TRUTH"
-                      ? "bg-[#5B89A6] text-white border-[#5B89A6] shadow-sm"
-                      : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#5B89A6]"
+                      ? "bg-[#5B89A6] text-white border-[#5B89A6] shadow-md"
+                      : "bg-white text-[#283E52] border-[#C8DCEB] hover:border-[#5B89A6]"
                   }`}
                 >
-                  💌 Chọn Thật (10 câu hỏi)
+                  💌 Chọn Thật
                 </button>
                 <button
                   type="button"
                   onClick={() => setG2Mode("DARE")}
-                  className={`py-3 px-4 rounded-2xl text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
+                  className={`py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-semibold border-2 transition-all cursor-pointer ${
                     g2Mode === "DARE"
-                      ? "bg-[#3A627D] text-white border-[#3A627D] shadow-sm"
-                      : "bg-white text-[#334B5E] border-[#D8E5EE] hover:border-[#5B89A6]"
+                      ? "bg-[#3A627D] text-white border-[#3A627D] shadow-md"
+                      : "bg-white text-[#283E52] border-[#C8DCEB] hover:border-[#5B89A6]"
                   }`}
                 >
-                  🐦 Chọn Thách (50 cột)
+                  🐦 Chọn Thách
                 </button>
               </div>
 
@@ -1800,41 +2347,81 @@ function GameBoard({
               {g2Mode === "TRUTH" && (
                 <form
                   onSubmit={handleTruthSubmit}
-                  className="space-y-3.5 bg-white p-4 sm:p-5 rounded-2xl border border-[#D8E5EE] max-h-[55vh] sm:max-h-[420px] overflow-y-auto custom-scrollbar"
+                  className="bg-[#EEF5FA] p-4 sm:p-6 rounded-3xl border-2 border-[#C5D9E8] shadow-inner"
                 >
-                  {CONFIG.game2.truthQuestions.map((q, idx) => (
-                    <div key={idx}>
-                      <label className="block text-xs font-medium text-[#334B5E] mb-1">
-                        {q}
-                      </label>
-                      <input
-                        type="text"
-                        disabled={unlockedDigits[1] !== null}
-                        value={truthAnswers[idx]}
-                        onChange={(e) => {
-                          const next = [...truthAnswers];
-                          next[idx] = e.target.value;
-                          setTruthAnswers(next);
-                        }}
-                        placeholder="Viết câu trả lời của bạn..."
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF8F2] border border-[#D8E5EE] text-sm sm:text-xs text-[#283E52] focus:outline-none focus:border-[#5B89A6]"
-                      />
-                    </div>
-                  ))}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-[#CFE0EC]">
+                    <span className="text-xs sm:text-sm font-bold text-[#283E52]">
+                      📝 Bảng 10 Câu Hỏi Sự Thật
+                    </span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-white text-[#487594] border border-[#B8D2E3] shadow-sm">
+                      Đã điền: {filledTruthCount} /{" "}
+                      {CONFIG.game2.truthQuestions.length} câu
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 max-h-[62vh] sm:max-h-[480px] overflow-y-auto pr-1.5 sm:pr-2 custom-scrollbar">
+                    {CONFIG.game2.truthQuestions.map((q, idx) => {
+                      const isFilled = truthAnswers[idx]?.trim().length > 0;
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all ${
+                            isFilled
+                              ? "bg-white border-[#6CA0C2] shadow-sm"
+                              : "bg-[#FAFBFD] border-[#D0E0EC] hover:border-[#95BBD6]"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5 mb-2.5">
+                            <span
+                              className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 ${
+                                isFilled
+                                  ? "bg-[#5B89A6] text-white"
+                                  : "bg-[#E2EDF5] text-[#487594]"
+                              }`}
+                            >
+                              {isFilled ? "✓" : idx + 1}
+                            </span>
+                            <label
+                              htmlFor={`truth-q-${idx}`}
+                              className="block text-sm sm:text-[15px] font-semibold text-[#1E3346] leading-snug cursor-pointer"
+                            >
+                              {q}
+                            </label>
+                          </div>
+
+                          <textarea
+                            id={`truth-q-${idx}`}
+                            rows={2}
+                            disabled={unlockedDigits[1] !== null}
+                            value={truthAnswers[idx]}
+                            onChange={(e) => {
+                              const next = [...truthAnswers];
+                              next[idx] = e.target.value;
+                              setTruthAnswers(next);
+                            }}
+                            placeholder={`Nhập câu trả lời số ${idx + 1} của bạn vào đây...`}
+                            className="w-full px-4 py-3 rounded-xl bg-[#F2F7FB] focus:bg-white border-2 border-[#B8D0E2] focus:border-[#3B7396] text-sm sm:text-[15px] text-[#162938] font-medium placeholder-[#7E97AA] caret-[#162938] cursor-text focus:outline-none focus:ring-4 focus:ring-[#5B89A6]/20 transition-all resize-y leading-relaxed"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {truthError && (
-                    <p className="text-xs text-[#B84A4A]">{truthError}</p>
+                    <div className="mt-4 p-3.5 rounded-xl bg-[#FDECEC] border border-[#F2B8B8] text-xs sm:text-sm text-[#A63A3A] font-medium text-center">
+                      {truthError}
+                    </div>
                   )}
 
                   {unlockedDigits[1] === null && (
                     <button
                       type="submit"
                       disabled={isSendingTruth}
-                      className="w-full py-3 rounded-xl bg-[#5B89A6] hover:bg-[#487594] text-white text-xs font-semibold transition-all cursor-pointer"
+                      className="mt-5 w-full py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] active:scale-[0.99] text-white text-sm font-bold shadow-[0_8px_20px_rgba(91,137,166,0.3)] transition-all cursor-pointer"
                     >
                       {isSendingTruth
                         ? "Đang hoàn tất..."
-                        : "Nhận chữ số thứ 2"}
+                        : `Nhận chữ số thứ 2 (${filledTruthCount}/10)`}
                     </button>
                   )}
                 </form>
@@ -1998,7 +2585,7 @@ function GameBoard({
                   value={mathInput}
                   onChange={(e) => setMathInput(e.target.value)}
                   placeholder="Nhập đáp án của bạn..."
-                  className="flex-1 px-4 py-3 rounded-xl bg-white border border-[#D8E5EE] text-base sm:text-sm text-[#283E52] focus:outline-none focus:border-[#5B89A6]"
+                  className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-[#C8DCEB] text-base sm:text-sm text-[#1D3040] caret-[#1D3040] focus:outline-none focus:border-[#5B89A6]"
                 />
                 <button
                   type="submit"
@@ -2224,13 +2811,67 @@ function BalloonsBackground() {
 }
 
 // ============================================================================
-// COMPONENT 3B: BÁNH SINH NHẬT 3D (TỰ ĐỘNG CĂN CHỈNH TỶ LỆ TRÊN MÀN HÌNH DỌC ĐIỆN THOẠI)
+// COMPONENT 3B: BÁNH SINH NHẬT 3D CAO CẤP (3-TIER KOREAN VINTAGE COQUETTE CAKE)
 // ============================================================================
 interface ThreeMeshGroupLike {
   visible: boolean;
   rotation: { x: number; y: number; z: number };
   position: { x: number; y: number; z: number };
   scale: { set: (x: number, y: number, z: number) => void };
+}
+
+function SmoothSceneLighting({
+  roomLightPhase,
+}: {
+  roomLightPhase: "DARK" | "IGNITING" | "SPREADING" | "BRIGHT";
+}) {
+  const ambientRef = useRef<{ intensity: number } | null>(null);
+  const dirLightRef = useRef<{ intensity: number } | null>(null);
+  const fillLightRef = useRef<{ intensity: number } | null>(null);
+  const progressRef = useRef(roomLightPhase === "BRIGHT" ? 1 : 0);
+
+  useFrame((_, delta) => {
+    if (roomLightPhase === "DARK") {
+      progressRef.current = 0;
+    } else if (roomLightPhase === "IGNITING") {
+      progressRef.current = Math.min(0.14, progressRef.current + delta * 0.11);
+    } else if (roomLightPhase === "SPREADING") {
+      progressRef.current = Math.min(1, progressRef.current + delta * 0.42);
+    } else {
+      progressRef.current = Math.min(1, progressRef.current + delta * 1.5);
+    }
+
+    const p = progressRef.current;
+    const ease = 1 - Math.pow(1 - p, 3);
+
+    if (ambientRef.current) {
+      ambientRef.current.intensity = 0.02 + ease * 0.88;
+    }
+    if (dirLightRef.current) {
+      dirLightRef.current.intensity = 0.02 + ease * 1.15;
+    }
+    if (fillLightRef.current) {
+      fillLightRef.current.intensity = ease * 0.48;
+    }
+  });
+
+  return (
+    <>
+      <ambientLight ref={ambientRef as never} intensity={0.02} />
+      <directionalLight
+        ref={dirLightRef as never}
+        position={[5, 8, 5]}
+        intensity={0.02}
+        castShadow
+      />
+      <pointLight
+        ref={fillLightRef as never}
+        position={[-4, 3, -3]}
+        intensity={0}
+        color="#CFE2EE"
+      />
+    </>
+  );
 }
 
 function CandleFlame({
@@ -2245,6 +2886,7 @@ function CandleFlame({
   const lightRef = useRef<{ intensity: number } | null>(null);
   const blowProgressRef = useRef(0);
   const smokeProgressRef = useRef(0);
+  const igniteScaleRef = useRef(0);
 
   useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime();
@@ -2252,17 +2894,24 @@ function CandleFlame({
     if (candleState === "LIT") {
       blowProgressRef.current = 0;
       smokeProgressRef.current = 0;
+      igniteScaleRef.current = Math.min(
+        1,
+        igniteScaleRef.current + delta * 0.85,
+      );
+      const ig = igniteScaleRef.current;
+      const smoothIg = 1 - Math.pow(1 - ig, 2.5);
+
       if (flameGroupRef.current) {
         flameGroupRef.current.visible = true;
         flameGroupRef.current.rotation.z =
           Math.sin(t * 7 + position[0] * 4) * 0.08;
         flameGroupRef.current.rotation.x = Math.cos(t * 6) * 0.05;
-        const s = 1 + Math.sin(t * 14 + position[0] * 10) * 0.1;
-        flameGroupRef.current.scale.set(1, s, 1);
+        const s = (1 + Math.sin(t * 14 + position[0] * 10) * 0.1) * smoothIg;
+        flameGroupRef.current.scale.set(smoothIg, s, smoothIg);
       }
       if (lightRef.current) {
         lightRef.current.intensity =
-          1.25 + Math.sin(t * 15 + position[2] * 8) * 0.25;
+          (2.1 + Math.sin(t * 15 + position[2] * 8) * 0.35) * smoothIg;
       }
       if (smokeRef.current) {
         smokeRef.current.visible = false;
@@ -2287,7 +2936,7 @@ function CandleFlame({
       if (lightRef.current) {
         lightRef.current.intensity = Math.max(
           0,
-          (1 - p) * 1.3 + Math.sin(t * 40) * 0.3,
+          (1 - p) * 1.6 + Math.sin(t * 40) * 0.3,
         );
       }
       if (smokeRef.current) {
@@ -2298,6 +2947,7 @@ function CandleFlame({
         smokeRef.current.scale.set(smokeScale, smokeScale, smokeScale);
       }
     } else if (candleState === "BLOWN") {
+      igniteScaleRef.current = 0;
       if (flameGroupRef.current) flameGroupRef.current.visible = false;
       if (lightRef.current) lightRef.current.intensity = 0;
 
@@ -2314,6 +2964,7 @@ function CandleFlame({
         smokeRef.current.scale.set(s, s, s);
       }
     } else {
+      igniteScaleRef.current = 0;
       if (flameGroupRef.current) flameGroupRef.current.visible = false;
       if (lightRef.current) lightRef.current.intensity = 0;
       if (smokeRef.current) smokeRef.current.visible = false;
@@ -2323,12 +2974,21 @@ function CandleFlame({
   return (
     <group position={position}>
       <mesh position={[0, 0.18, 0]} castShadow>
-        <cylinderGeometry args={[0.045, 0.045, 0.36, 20]} />
-        <meshStandardMaterial color="#FFFDF7" roughness={0.35} />
+        <cylinderGeometry args={[0.042, 0.042, 0.36, 20]} />
+        <meshStandardMaterial color="#FFFDF7" roughness={0.3} />
       </mesh>
-      <mesh position={[0, 0.18, 0]}>
-        <cylinderGeometry args={[0.047, 0.047, 0.1, 20]} />
-        <meshStandardMaterial color="#83B0CC" roughness={0.4} />
+      <mesh position={[0, 0.12, 0]}>
+        <cylinderGeometry args={[0.045, 0.045, 0.07, 20]} />
+        <meshStandardMaterial color="#F4A6B8" roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0.24, 0]}>
+        <cylinderGeometry args={[0.045, 0.045, 0.07, 20]} />
+        <meshStandardMaterial color="#83B0CC" roughness={0.35} />
+      </mesh>
+
+      <mesh position={[0, 0.01, 0]}>
+        <cylinderGeometry args={[0.06, 0.05, 0.03, 16]} />
+        <meshStandardMaterial color="#E5C178" metalness={0.4} roughness={0.3} />
       </mesh>
 
       <mesh position={[0, 0.38, 0]}>
@@ -2344,23 +3004,23 @@ function CandleFlame({
         <pointLight
           ref={lightRef as never}
           color="#FFB84D"
-          intensity={1.3}
-          distance={4.5}
+          intensity={2.1}
+          distance={6.5}
           decay={2}
         />
         <mesh position={[0, 0.06, 0]}>
-          <coneGeometry args={[0.055, 0.18, 16]} />
+          <coneGeometry args={[0.06, 0.2, 16]} />
           <meshStandardMaterial
             color="#FFD166"
             emissive="#FF8C1A"
-            emissiveIntensity={2.6}
+            emissiveIntensity={3.2}
             transparent
-            opacity={0.95}
+            opacity={0.96}
           />
         </mesh>
         <mesh position={[0, 0.04, 0]}>
-          <sphereGeometry args={[0.036, 12, 12]} />
-          <meshBasicMaterial color="#FFF8E7" />
+          <sphereGeometry args={[0.04, 12, 12]} />
+          <meshBasicMaterial color="#FFFDF9" />
         </mesh>
       </group>
 
@@ -2388,6 +3048,85 @@ function CandleFlame({
   );
 }
 
+function Strawberry3D({
+  position,
+  rotation = [0, 0, 0],
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+}) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0.04, 0]} castShadow>
+        <coneGeometry args={[0.085, 0.17, 16]} />
+        <meshStandardMaterial color="#E04F67" roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.078, 14, 14]} />
+        <meshStandardMaterial color="#E04F67" roughness={0.35} />
+      </mesh>
+      <mesh position={[0, -0.06, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.065, 0.03, 6]} />
+        <meshStandardMaterial color="#6DA862" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function Macaron3D({
+  position,
+  rotation = [0, 0, 0],
+  color = "#F4A6B8",
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  color?: string;
+}) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0.025, 0]} castShadow>
+        <cylinderGeometry args={[0.11, 0.11, 0.035, 20]} />
+        <meshStandardMaterial color={color} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[0.115, 0.115, 0.022, 20]} />
+        <meshStandardMaterial color="#FFFDF7" roughness={0.3} />
+      </mesh>
+      <mesh position={[0, -0.025, 0]} castShadow>
+        <cylinderGeometry args={[0.11, 0.11, 0.035, 20]} />
+        <meshStandardMaterial color={color} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+function CoquetteBow3D({
+  position,
+  rotation = [0, 0, 0],
+  color = "#F4A6B8",
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  color?: string;
+}) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[-0.065, 0, 0]} rotation={[0, 0, 0.25]}>
+        <sphereGeometry args={[0.048, 12, 12]} />
+        <meshStandardMaterial color={color} roughness={0.35} />
+      </mesh>
+      <mesh position={[0.065, 0, 0]} rotation={[0, 0, -0.25]}>
+        <sphereGeometry args={[0.048, 12, 12]} />
+        <meshStandardMaterial color={color} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0.02]}>
+        <sphereGeometry args={[0.028, 12, 12]} />
+        <meshStandardMaterial color="#FFFDF7" metalness={0.2} roughness={0.2} />
+      </mesh>
+    </group>
+  );
+}
+
 function BirthdayCakeModel({
   candleState,
 }: {
@@ -2395,21 +3134,47 @@ function BirthdayCakeModel({
 }) {
   const groupRef = useRef<{ rotation: { y: number } } | null>(null);
   const { viewport } = useThree();
-  // Tự động thu gọn nhẹ tỷ lệ bánh kem khi xem trên màn hình dọc của điện thoại
-  const responsiveScale = Math.min(1, Math.max(0.76, viewport.width / 3.4));
+  const responsiveScale = Math.min(1, Math.max(0.75, viewport.width / 3.45));
 
   const candlePositions: Array<[number, number, number]> = [
-    [0, 0.95, 0],
-    [0.36, 0.95, 0],
-    [-0.36, 0.95, 0],
-    [0, 0.95, 0.36],
-    [0, 0.95, -0.36],
+    [0, 1.24, 0],
+    [0.27, 1.24, 0],
+    [-0.27, 1.24, 0],
+    [0, 1.24, 0.27],
+    [0, 1.24, -0.27],
   ];
 
-  const bottomPearls = useMemo<Array<[number, number, number]>>(() => {
-    return Array.from({ length: 16 }).map((_, i) => {
-      const angle = (i / 16) * Math.PI * 2;
-      return [Math.cos(angle) * 1.24, -0.25, Math.sin(angle) * 1.24];
+  const tier1Pearls = useMemo<Array<[number, number, number]>>(() => {
+    return Array.from({ length: 24 }).map((_, i) => {
+      const angle = (i / 24) * Math.PI * 2;
+      return [Math.cos(angle) * 1.3, -0.32, Math.sin(angle) * 1.3];
+    });
+  }, []);
+
+  const tier1Drips = useMemo<
+    Array<{ pos: [number, number, number]; h: number }>
+  >(() => {
+    return Array.from({ length: 18 }).map((_, i) => {
+      const angle = (i / 18) * Math.PI * 2;
+      const h = 0.14 + (i % 3) * 0.06;
+      return {
+        pos: [Math.cos(angle) * 1.29, 0.34 - h / 2, Math.sin(angle) * 1.29],
+        h,
+      };
+    });
+  }, []);
+
+  const tier2Swirls = useMemo<Array<[number, number, number]>>(() => {
+    return Array.from({ length: 18 }).map((_, i) => {
+      const angle = (i / 18) * Math.PI * 2;
+      return [Math.cos(angle) * 0.96, 0.38, Math.sin(angle) * 0.96];
+    });
+  }, []);
+
+  const tier3Pearls = useMemo<Array<[number, number, number]>>(() => {
+    return Array.from({ length: 14 }).map((_, i) => {
+      const angle = (i / 14) * Math.PI * 2;
+      return [Math.cos(angle) * 0.65, 0.88, Math.sin(angle) * 0.65];
     });
   }, []);
 
@@ -2420,57 +3185,155 @@ function BirthdayCakeModel({
   });
 
   return (
-    <Float speed={1.4} rotationIntensity={0.08} floatIntensity={0.25}>
+    <Float speed={1.35} rotationIntensity={0.07} floatIntensity={0.22}>
       <group
         ref={groupRef as never}
-        position={[0, -0.35, 0]}
+        position={[0, -0.45, 0]}
         scale={responsiveScale}
       >
-        <mesh position={[0, -0.35, 0]} receiveShadow>
-          <cylinderGeometry args={[1.6, 1.42, 0.1, 48]} />
+        <mesh position={[0, -0.62, 0]} receiveShadow>
+          <cylinderGeometry args={[0.55, 0.72, 0.35, 36]} />
           <meshStandardMaterial
-            color="#F7F5EE"
-            roughness={0.25}
-            metalness={0.05}
+            color="#F2EFE6"
+            roughness={0.3}
+            metalness={0.08}
+          />
+        </mesh>
+        <mesh position={[0, -0.46, 0]}>
+          <cylinderGeometry args={[0.42, 0.42, 0.08, 32]} />
+          <meshStandardMaterial
+            color="#E5C178"
+            roughness={0.28}
+            metalness={0.45}
+          />
+        </mesh>
+        <mesh position={[0, -0.39, 0]} receiveShadow>
+          <cylinderGeometry args={[1.68, 1.52, 0.1, 48]} />
+          <meshStandardMaterial
+            color="#FAF8F2"
+            roughness={0.22}
+            metalness={0.06}
           />
         </mesh>
 
-        <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[1.22, 1.22, 0.72, 48]} />
-          <meshStandardMaterial color="#FAF3E3" roughness={0.45} />
+        <mesh position={[0, 0.0, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[1.28, 1.28, 0.68, 48]} />
+          <meshStandardMaterial color="#FFF9EC" roughness={0.42} />
         </mesh>
 
-        {bottomPearls.map((pos, idx) => (
-          <mesh key={idx} position={pos}>
-            <sphereGeometry args={[0.055, 12, 12]} />
-            <meshStandardMaterial color="#CFE2EE" roughness={0.35} />
+        <mesh position={[0, 0.34, 0]}>
+          <cylinderGeometry args={[1.3, 1.3, 0.06, 48]} />
+          <meshStandardMaterial color="#A8CDE3" roughness={0.32} />
+        </mesh>
+        {tier1Drips.map((d, idx) => (
+          <mesh key={idx} position={d.pos}>
+            <cylinderGeometry args={[0.042, 0.035, d.h, 12]} />
+            <meshStandardMaterial color="#A8CDE3" roughness={0.32} />
           </mesh>
         ))}
 
-        <mesh position={[0, 0.4, 0]}>
-          <cylinderGeometry args={[1.25, 1.25, 0.09, 48]} />
-          <meshStandardMaterial color="#ACCBE0" roughness={0.35} />
+        {tier1Pearls.map((pos, idx) => (
+          <mesh key={idx} position={pos}>
+            <sphereGeometry args={[0.055, 12, 12]} />
+            <meshStandardMaterial
+              color={idx % 2 === 0 ? "#FAD2DF" : "#CFE2EE"}
+              roughness={0.3}
+            />
+          </mesh>
+        ))}
+
+        {[0, 1, 2, 3].map((i) => {
+          const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+          return (
+            <CoquetteBow3D
+              key={i}
+              position={[Math.cos(ang) * 1.3, 0.02, Math.sin(ang) * 1.3]}
+              rotation={[0, -ang + Math.PI / 2, 0]}
+              color={i % 2 === 0 ? "#F4A6B8" : "#88B8D6"}
+            />
+          );
+        })}
+
+        {[0, 1, 2, 3, 4, 5].map((i) => {
+          const ang = (i / 6) * Math.PI * 2;
+          const r = 1.12;
+          return i % 2 === 0 ? (
+            <Macaron3D
+              key={i}
+              position={[Math.cos(ang) * r, 0.41, Math.sin(ang) * r]}
+              rotation={[0.15, -ang, 0.1]}
+              color={i === 0 ? "#F4A6B8" : i === 2 ? "#93BCD6" : "#F6E0B5"}
+            />
+          ) : (
+            <Strawberry3D
+              key={i}
+              position={[Math.cos(ang) * r, 0.44, Math.sin(ang) * r]}
+              rotation={[0, -ang, 0]}
+            />
+          );
+        })}
+
+        <mesh position={[0, 0.62, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.92, 0.92, 0.52, 48]} />
+          <meshStandardMaterial color="#DDF0FA" roughness={0.4} />
         </mesh>
 
-        <mesh position={[0, 0.68, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.84, 0.84, 0.56, 48]} />
-          <meshStandardMaterial color="#D8E9F5" roughness={0.45} />
+        <mesh position={[0, 0.87, 0]}>
+          <cylinderGeometry args={[0.94, 0.94, 0.05, 48]} />
+          <meshStandardMaterial color="#FFFDF9" roughness={0.3} />
         </mesh>
+
+        {tier2Swirls.map((pos, idx) => (
+          <mesh key={idx} position={pos}>
+            <sphereGeometry args={[0.062, 14, 14]} />
+            <meshStandardMaterial color="#FFFDF9" roughness={0.28} />
+          </mesh>
+        ))}
+
+        {[0, 1, 2, 3, 4, 5].map((i) => {
+          const ang = (i / 6) * Math.PI * 2 + 0.3;
+          return (
+            <Strawberry3D
+              key={i}
+              position={[Math.cos(ang) * 0.78, 0.95, Math.sin(ang) * 0.78]}
+              rotation={[0, -ang, 0]}
+            />
+          );
+        })}
+
+        <mesh position={[0, 1.06, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.6, 0.6, 0.36, 48]} />
+          <meshStandardMaterial color="#FCE4EC" roughness={0.38} />
+        </mesh>
+
+        {tier3Pearls.map((pos, idx) => (
+          <mesh key={idx} position={pos}>
+            <sphereGeometry args={[0.042, 12, 12]} />
+            <meshStandardMaterial
+              color="#E5C178"
+              metalness={0.45}
+              roughness={0.25}
+            />
+          </mesh>
+        ))}
 
         {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
           const angle = (i / 8) * Math.PI * 2;
           return (
             <group
               key={i}
-              position={[Math.cos(angle) * 0.68, 0.97, Math.sin(angle) * 0.68]}
+              position={[Math.cos(angle) * 0.48, 1.25, Math.sin(angle) * 0.48]}
             >
               <mesh castShadow>
-                <sphereGeometry args={[0.09, 16, 16]} />
-                <meshStandardMaterial color="#FFFDF7" roughness={0.3} />
+                <sphereGeometry args={[0.068, 14, 14]} />
+                <meshStandardMaterial color="#FFFDF9" roughness={0.28} />
               </mesh>
-              <mesh position={[0, 0.06, 0]}>
-                <sphereGeometry args={[0.045, 12, 12]} />
-                <meshStandardMaterial color="#5B89A6" roughness={0.35} />
+              <mesh position={[0, 0.055, 0]}>
+                <sphereGeometry args={[0.028, 10, 10]} />
+                <meshStandardMaterial
+                  color={i % 2 === 0 ? "#5B89A6" : "#F497B0"}
+                  roughness={0.3}
+                />
               </mesh>
             </group>
           );
@@ -2496,7 +3359,7 @@ function BookLetterInner({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#182633]/45 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-[#182633]/45 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
       <div className="book-perspective w-full max-w-2xl">
         <div
           className={`relative bg-[#FAF8F2] border-2 border-[#CAD8E3] rounded-r-2xl sm:rounded-r-3xl rounded-l-xl shadow-[0_30px_80px_rgba(25,42,58,0.38)] overflow-hidden transition-all duration-1000 ${
@@ -2582,7 +3445,7 @@ function BookLetterModal({
 }
 
 // ============================================================================
-// COMPONENT 4: TRANG TIỆM PHOTOBOOTH SINH NHẬT (RESPONSIVE ĐIỆN THOẠI & MÁY TÍNH)
+// COMPONENT 4: TRANG TIỆM PHOTOBOOTH SINH NHẬT (ĐÃ XÓA BĂNG CÁ NHÂN TRÊN MÁ Ở CÁC FILTER 2, 4, 6, 8)
 // ============================================================================
 export interface TrackedFacePose {
   detected: boolean;
@@ -2692,8 +3555,6 @@ const PHOTOBOOTH_FILTERS = [
     stickerText: "Shining Doc 🐚",
   },
 ];
-
-// --- BỘ HÀM VẼ ĐỒ HỌA CHỦ ĐỀ BÁC SĨ DỄ THƯƠNG + NHÂN VẬT CHIBI & TIỆC SINH NHẬT ---
 
 function drawCornerSatinBow(
   ctx: CanvasRenderingContext2D,
@@ -2830,8 +3691,7 @@ function drawDoctorTeddyBear(
   ctx.fill();
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.roundRect(-14, -33, 28, 13, 5);
+  drawRoundedRectPath(ctx, -14, -33, 28, 13, 5);
   ctx.fillStyle = "#FFFFFF";
   ctx.fill();
   ctx.strokeStyle = "#79B4D9";
@@ -2888,8 +3748,7 @@ function drawCuteBunnyDoctor(
   ctx.fillStyle = "#FFFDF9";
   ctx.strokeStyle = "#F28B9F";
   ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.roundRect(-11, -25, 22, 10, 4);
+  drawRoundedRectPath(ctx, -11, -25, 22, 10, 4);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#FF6B8B";
@@ -3101,19 +3960,16 @@ function drawCuteCapsulePill(
   ctx.scale(scale, scale);
 
   ctx.fillStyle = colorA;
-  ctx.beginPath();
-  ctx.roundRect(-9, -18, 18, 19, [9, 9, 0, 0]);
+  drawRoundedRectPath(ctx, -9, -18, 18, 19, [9, 9, 0, 0]);
   ctx.fill();
 
   ctx.fillStyle = colorB;
-  ctx.beginPath();
-  ctx.roundRect(-9, 0, 18, 18, [0, 0, 9, 9]);
+  drawRoundedRectPath(ctx, -9, 0, 18, 18, [0, 0, 9, 9]);
   ctx.fill();
 
   ctx.strokeStyle = "#5B89A6";
   ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.roundRect(-9, -18, 18, 36, 9);
+  drawRoundedRectPath(ctx, -9, -18, 18, 36, 9);
   ctx.stroke();
 
   ctx.fillStyle = "#283E52";
@@ -3144,8 +4000,7 @@ function drawCuteBandAid(
   ctx.fillStyle = "#FCD5CE";
   ctx.strokeStyle = "#E8998D";
   ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.roundRect(-20, -8, 40, 16, 8);
+  drawRoundedRectPath(ctx, -20, -8, 40, 16, 8);
   ctx.fill();
   ctx.stroke();
 
@@ -3179,8 +4034,7 @@ function drawCuteSyringeIcon(
   ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
   ctx.strokeStyle = "#5B89A6";
   ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.roundRect(-7, -16, 14, 30, 3);
+  drawRoundedRectPath(ctx, -7, -16, 14, 30, 3);
   ctx.fill();
   ctx.stroke();
 
@@ -3221,8 +4075,7 @@ function drawMedicalClipboardIcon(
   ctx.fillStyle = "#E6BA95";
   ctx.strokeStyle = "#B0825E";
   ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.roundRect(-18, -22, 36, 44, 5);
+  drawRoundedRectPath(ctx, -18, -22, 36, 44, 5);
   ctx.fill();
   ctx.stroke();
 
@@ -3230,8 +4083,7 @@ function drawMedicalClipboardIcon(
   ctx.fillRect(-14, -16, 28, 34);
 
   ctx.fillStyle = "#95B3C9";
-  ctx.beginPath();
-  ctx.roundRect(-8, -25, 16, 6, 2);
+  drawRoundedRectPath(ctx, -8, -25, 16, 6, 2);
   ctx.fill();
 
   ctx.fillStyle = "#FF6B8B";
@@ -3240,10 +4092,6 @@ function drawMedicalClipboardIcon(
 
   ctx.fillStyle = "#487594";
   ctx.font = "bold 8px sans-serif";
-  ctx.fillText("Rx: 100%", -2, -7);
-  ctx.fillText("HAPPY ♥", -11, 5);
-  ctx.fillText("HEALTHY", -11, 14);
-
   ctx.restore();
 }
 
@@ -3293,8 +4141,7 @@ function drawMiniBirthdayCakeIcon(
   ctx.fillStyle = "#FFF8EE";
   ctx.strokeStyle = "#D4A373";
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(-20, -4, 40, 22, 5);
+  drawRoundedRectPath(ctx, -20, -4, 40, 22, 5);
   ctx.fill();
   ctx.stroke();
 
@@ -3340,13 +4187,11 @@ function drawCuteGiftBox(
   ctx.fillStyle = boxColor;
   ctx.strokeStyle = ribbonColor;
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(-16, -10, 32, 26, 4);
+  drawRoundedRectPath(ctx, -16, -10, 32, 26, 4);
   ctx.fill();
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.roundRect(-19, -16, 38, 8, 3);
+  drawRoundedRectPath(ctx, -19, -16, 38, 8, 3);
   ctx.fill();
   ctx.stroke();
 
@@ -3418,8 +4263,7 @@ function drawCuteSpeechSticker(
   ctx.strokeStyle = borderColor;
   ctx.lineWidth = 2.2;
 
-  ctx.beginPath();
-  ctx.roundRect(-54, -15, 108, 28, 14);
+  drawRoundedRectPath(ctx, -54, -15, 108, 28, 14);
   ctx.fill();
   ctx.stroke();
 
@@ -3431,9 +4275,6 @@ function drawCuteSpeechSticker(
   ctx.restore();
 }
 
-// ============================================================================
-// HÀM CHÍNH: VẼ PHỤ KIỆN AR 6DoF BÁM CHẶT THEO KHUÔN MẶT + KHUNG PURIKURA TRENDING
-// ============================================================================
 function drawFilterAccessoryOnCanvas(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -3452,8 +4293,6 @@ function drawFilterAccessoryOnCanvas(
   const fy = facePose.foreheadY;
   const ex = facePose.eyeCenterX;
   const ey = facePose.eyeCenterY;
-  const rcx = facePose.rightCheekX;
-  const rcy = facePose.rightCheekY;
   const roll = facePose.rollAngle;
   const yaw = facePose.yawRatio;
   const sc = facePose.faceScale;
@@ -3461,9 +4300,7 @@ function drawFilterAccessoryOnCanvas(
   const yawShiftX = yaw * 18 * sc;
   const cosYaw = Math.max(0.75, Math.cos(yaw * 0.65));
 
-  if (filterIndex % 2 === 1) {
-    drawCuteBandAid(ctx, rcx + 4 * sc, rcy - 2 * sc, roll - 0.18, 0.54 * sc);
-  }
+  // ĐÃ XÓA HOÀN TOÀN BĂNG DÁN CÁ NHÂN TRÊN GÒ MÁ Ở CÁC FILTER 2, 4, 6, 8 THEO YÊU CẦU
 
   if (filterIndex === 0) {
     ctx.save();
@@ -3559,9 +4396,9 @@ function drawFilterAccessoryOnCanvas(
     ctx.stroke();
 
     ctx.fillStyle = "#FF6B8B";
-    ctx.beginPath();
-    ctx.roundRect(-5, -30, 10, 26, 3);
-    ctx.roundRect(-13, -22, 26, 10, 3);
+    drawRoundedRectPath(ctx, -5, -30, 10, 26, 3);
+    ctx.fill();
+    drawRoundedRectPath(ctx, -13, -22, 26, 10, 3);
     ctx.fill();
 
     drawCornerSatinBow(ctx, -64, 12, "#98CEF0", "#FFFFFF", 0.62);
@@ -3625,8 +4462,7 @@ function drawFilterAccessoryOnCanvas(
     ctx.fillStyle = "#FFFFFF";
     ctx.strokeStyle = "#F28B9F";
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(-24, -16, 48, 24, 8);
+    drawRoundedRectPath(ctx, -24, -16, 48, 24, 8);
     ctx.fill();
     ctx.stroke();
 
@@ -3868,7 +4704,16 @@ function drawFilterAccessoryOnCanvas(
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, w, h);
-  ctx.roundRect(borderT, borderT, w - borderT * 2, h - borderT * 2, 28);
+  ctx.moveTo(borderT + 28, borderT);
+  ctx.lineTo(w - borderT - 28, borderT);
+  ctx.quadraticCurveTo(w - borderT, borderT, w - borderT, borderT + 28);
+  ctx.lineTo(w - borderT, h - borderT - 28);
+  ctx.quadraticCurveTo(w - borderT, h - borderT, w - borderT - 28, h - borderT);
+  ctx.lineTo(borderT + 28, h - borderT);
+  ctx.quadraticCurveTo(borderT, h - borderT, borderT, h - borderT - 28);
+  ctx.lineTo(borderT, borderT + 28);
+  ctx.quadraticCurveTo(borderT, borderT, borderT + 28, borderT);
+  ctx.closePath();
   ctx.clip("evenodd");
 
   const frameGrad = ctx.createLinearGradient(0, 0, w, h);
@@ -3966,14 +4811,19 @@ function drawFilterAccessoryOnCanvas(
     });
   }
 
-  ctx.beginPath();
-  ctx.roundRect(borderT, borderT, w - borderT * 2, h - borderT * 2, 28);
+  drawRoundedRectPath(
+    ctx,
+    borderT,
+    borderT,
+    w - borderT * 2,
+    h - borderT * 2,
+    28,
+  );
   ctx.strokeStyle = filter.accentColor;
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.roundRect(4, 4, w - 8, h - 8, 16);
+  drawRoundedRectPath(ctx, 4, 4, w - 8, h - 8, 16);
   ctx.strokeStyle = "#FFFFFF";
   ctx.lineWidth = 2.5;
   ctx.stroke();
@@ -3983,15 +4833,14 @@ function drawFilterAccessoryOnCanvas(
   ctx.fillStyle = "rgba(255, 253, 249, 0.92)";
   ctx.strokeStyle = filter.accentColor;
   ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.roundRect(w / 2 - 115, 7, 230, 18, 9);
+  drawRoundedRectPath(ctx, w / 2 - 115, 7, 230, 18, 9);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = "#283E52";
   ctx.font = "bold 9px 'Be Vietnam Pro', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`● REC  |  BIRTHDAY STUDIO  | ♥ 19.09 ♥ `, w / 2, 19);
+  ctx.fillText(`● REC  |  BIRTHDAY STUDIO  | ♥ 19.09 ♥`, w / 2, 19);
   ctx.restore();
 
   const flagColors = [
@@ -4103,15 +4952,13 @@ function drawFilterAccessoryOnCanvas(
   ctx.fillStyle = "#FFFDF9";
   ctx.strokeStyle = filter.accentColor;
   ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.roundRect(bx, by, bannerW, bannerH, 19);
+  drawRoundedRectPath(ctx, bx, by, bannerW, bannerH, 19);
   ctx.fill();
   ctx.stroke();
 
   ctx.strokeStyle = "#F7C6D0";
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(bx + 4, by + 4, bannerW - 8, bannerH - 8, 15);
+  drawRoundedRectPath(ctx, bx + 4, by + 4, bannerW - 8, bannerH - 8, 15);
   ctx.stroke();
 
   ctx.fillStyle = "#283E52";
@@ -4742,15 +5589,14 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
               onClick={onBackToCake}
               className="px-3.5 py-2 rounded-xl bg-[#EAF1F6] hover:bg-[#D6E5F0] text-[#283E52] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>← Bánh Kem </span>
+              <span>← Trang Chủ</span>
             </button>
             <div>
               <h1 className="font-serif-vn text-lg sm:text-2xl font-bold text-[#283E52]">
-                Tiệm Photobooth Sinh Nhật 📸🩺
+                Tiệm Photobooth 📸🩺
               </h1>
               <p className="text-[11px] sm:text-xs text-[#546E82]">
-                Đợi một tý cho AI nhận diện khuôn mặt AR, Test filter bên phải
-                và nhấn bắt đầu nha!
+                Đợi một tý để AI nhận diện khuôn mặt và bám theo Filter AR nha!
               </p>
             </div>
           </div>
@@ -4832,7 +5678,7 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                     onClick={handleStart8Shots}
                     className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs sm:text-sm shadow-[0_10px_25px_rgba(91,137,166,0.35)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>📸 Bắt đầu chụp ảnh (8 giây / tấm)</span>
+                    <span>📸 Bắt đầu chụp 8 bức ảnh (8 giây / tấm)</span>
                   </button>
                 ) : (
                   <div className="w-full max-w-md text-center">
@@ -4928,7 +5774,9 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
                 </div>
 
                 <span className="text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full bg-[#EAF4EC] text-[#2E6B40] border border-[#B7DFC2]">
-                  {uploadStatus === "UPLOADING" ? "☁️..." : "✓"}
+                  {uploadStatus === "UPLOADING"
+                    ? "☁️ Đang lưu 8 ảnh vào Google Drive..."
+                    : "✓ Đã đồng bộ cả 8 ảnh về Google Drive"}
                 </span>
               </div>
 
@@ -5047,18 +5895,24 @@ function PhotoboothPage({ onBackToCake }: { onBackToCake: () => void }) {
 }
 
 // ============================================================================
-// COMPONENT 3: TRANG CHÚC MỪNG 3D (TỐI ƯU RESPONSIVE MOBILE & DESKTOP)
+// COMPONENT 3: TRANG CHÚC MỪNG 3D
 // ============================================================================
 function CelebrationPage({
   onOpenPhotobooth,
   hasWrittenWishOnce,
   onMarkWishWritten,
+  hasDoneFirstLightIntro,
+  onMarkFirstLightIntroDone,
+  onStartCelebrationMusic,
   candleState,
   setCandleState,
 }: {
   onOpenPhotobooth: () => void;
   hasWrittenWishOnce: boolean;
   onMarkWishWritten: () => void;
+  hasDoneFirstLightIntro: boolean;
+  onMarkFirstLightIntroDone: () => void;
+  onStartCelebrationMusic: () => void;
   candleState: "UNLIT" | "LIT" | "BLOWING" | "BLOWN";
   setCandleState: React.Dispatch<
     React.SetStateAction<"UNLIT" | "LIT" | "BLOWING" | "BLOWN">
@@ -5069,12 +5923,30 @@ function CelebrationPage({
   const [showWishModal, setShowWishModal] = useState(false);
   const [isLetterVisible, setIsLetterVisible] = useState(false);
 
+  const [roomLightPhase, setRoomLightPhase] = useState<
+    "DARK" | "IGNITING" | "SPREADING" | "BRIGHT"
+  >(() => (hasDoneFirstLightIntro ? "BRIGHT" : "DARK"));
+
   const handleLightCandle = () => {
     setCandleState("LIT");
-    if (!hasWrittenWishOnce) {
+    onStartCelebrationMusic();
+
+    if (!hasDoneFirstLightIntro) {
+      setRoomLightPhase("IGNITING");
+
       setTimeout(() => {
-        setShowWishModal(true);
-      }, 850);
+        setRoomLightPhase("SPREADING");
+
+        setTimeout(() => {
+          setRoomLightPhase("BRIGHT");
+          onMarkFirstLightIntroDone();
+          if (!hasWrittenWishOnce) {
+            setTimeout(() => {
+              setShowWishModal(true);
+            }, 350);
+          }
+        }, 2500);
+      }, 1300);
     }
   };
 
@@ -5107,30 +5979,78 @@ function CelebrationPage({
     triggerRealisticBlowOut(true);
   };
 
+  const isRoomDark = roomLightPhase === "DARK";
+  const isRoomIgniting = roomLightPhase === "IGNITING";
+  const isRoomSpreading = roomLightPhase === "SPREADING";
+
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden flex flex-col justify-between select-none">
       <BalloonsBackground />
 
-      {/* Nút mở Photobooth responsive: Thu gọn gọn gàng trên điện thoại, đầy đủ trên máy tính */}
-      <div className="fixed top-12 right-3 sm:top-20 sm:right-5 z-30 pointer-events-auto">
-        <button
-          type="button"
-          onClick={onOpenPhotobooth}
-          className="group flex items-center gap-2 sm:gap-2.5 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white border border-[#B8D2E3] shadow-[0_10px_28px_rgba(40,62,82,0.14)] text-[#283E52] transition-all hover:scale-105 cursor-pointer"
-        >
-          <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#5B89A6] text-white flex items-center justify-center text-sm sm:text-base shadow-sm">
-            📸
-          </span>
-          <div className="text-left pr-0.5 sm:pr-1">
-            <div className="text-[11px] sm:text-xs font-bold leading-tight text-[#283E52]">
-              Photobooth
+      {roomLightPhase !== "BRIGHT" && (
+        <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden">
+          <div
+            className={`absolute inset-0 bg-black ${
+              isRoomDark
+                ? "opacity-100"
+                : isRoomIgniting
+                  ? "gpu-darkness-ignite"
+                  : "gpu-darkness-fadeout"
+            }`}
+          />
+
+          {(isRoomIgniting || isRoomSpreading) && (
+            <div className="absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+              <div
+                className={`w-[220px] h-[220px] rounded-full ${
+                  isRoomIgniting
+                    ? "gpu-candle-ignite-halo"
+                    : "gpu-candle-glow-orb"
+                }`}
+              />
+
+              <div
+                className={`absolute flex flex-col items-center ${
+                  isRoomIgniting
+                    ? "gpu-candle-flame-grow"
+                    : "gpu-candle-flame-fade"
+                }`}
+              >
+                <div className="w-7 h-12 rounded-[50%_50%_50%_50%/65%_65%_35%_35%] bg-gradient-to-t from-[#FF8C00] via-[#FFC107] to-[#FFF9C4] shadow-[0_0_35px_12px_rgba(255,179,0,0.85)] flex items-end justify-center pb-1">
+                  <div className="w-3.5 h-6 rounded-full bg-white" />
+                </div>
+                <div className="w-0.5 h-2 bg-[#3A2E2B]" />
+                <div className="w-3.5 h-8 rounded-t-sm bg-gradient-to-b from-[#FFFDF7] to-[#D8C8B4] opacity-90" />
+              </div>
             </div>
-            <div className="text-[9px] sm:text-[10px] text-[#5B89A6] font-medium hidden xs:block sm:block">
-              Chụp 8 ảnh AR →
+          )}
+        </div>
+      )}
+
+      {roomLightPhase === "BRIGHT" && (
+        <div className="fixed top-4 right-3 sm:top-6 sm:right-6 z-50 pointer-events-auto">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenPhotobooth();
+            }}
+            className="group flex items-center gap-2 sm:gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-[#FAF8F2] hover:bg-white border-2 border-[#93BCD6] shadow-[0_12px_30px_rgba(40,62,82,0.18)] text-[#283E52] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <span className="w-8 h-8 rounded-xl bg-[#5B89A6] group-hover:bg-[#487594] text-white flex items-center justify-center text-base shadow-sm transition-colors">
+              📸
+            </span>
+            <div className="text-left pr-1">
+              <div className="text-xs font-bold leading-tight text-[#283E52]">
+                Tiệm Photobooth
+              </div>
+              <div className="text-[10px] text-[#5B89A6] font-semibold">
+                Check-in chụp ảnh →
+              </div>
             </div>
-          </div>
-        </button>
-      </div>
+          </button>
+        </div>
+      )}
 
       {candleState === "BLOWING" && (
         <div className="fixed inset-0 pointer-events-none z-30 flex items-center justify-center overflow-hidden">
@@ -5142,40 +6062,42 @@ function CelebrationPage({
         </div>
       )}
 
-      <header className="relative z-20 pt-24 sm:pt-20 px-3 sm:px-4 text-center pointer-events-auto">
-        <div className="inline-block bg-[#FAF8F2]/90 backdrop-blur-md border border-[#D8E5EE] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full shadow-sm max-w-[92vw]">
-          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-[#487594] font-semibold">
-            ✨ Happy Birthday To You ✨
+      <header
+        className={`relative z-20 pt-20 sm:pt-20 px-3 sm:px-4 text-center pointer-events-none transition-opacity duration-1000 ${
+          isRoomDark || isRoomIgniting ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <div className="inline-block bg-[#FAF8F2]/90 backdrop-blur-md border-2 border-[#CFE2EE] px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full shadow-sm max-w-[92vw]">
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-[#487594] font-bold">
+            ✨ Happy Birthday Party ✨
           </p>
           <h1 className="font-serif-vn text-lg sm:text-3xl font-bold text-[#283E52] mt-0.5 truncate">
             Tuổi Mới Bình Yên Giữa Trời Xanh
           </h1>
         </div>
         <p className="text-[11px] sm:text-xs text-[#4A6275] mt-1.5 sm:mt-2 font-medium px-2">
-          (Chạm tay hoặc dùng chuột xoay 360° quanh chiếc bánh sinh nhật)
+          (Chạm tay hoặc dùng chuột xoay 360° quanh chiếc bánh kem)
         </p>
       </header>
 
       <div className="relative z-10 w-full h-[46dvh] sm:h-[56vh] cursor-grab active:cursor-grabbing touch-none">
-        <Canvas shadows camera={{ position: [0, 1.75, 4.3], fov: 42 }}>
-          <ambientLight intensity={0.85} />
-          <directionalLight position={[5, 8, 5]} intensity={1.1} castShadow />
-          <pointLight position={[-4, 3, -3]} intensity={0.45} color="#CFE2EE" />
+        <Canvas shadows camera={{ position: [0, 1.85, 4.45], fov: 42 }}>
+          <SmoothSceneLighting roomLightPhase={roomLightPhase} />
 
           <Sparkles
-            count={40}
-            scale={4.5}
-            size={2.2}
+            count={45}
+            scale={4.8}
+            size={2.3}
             speed={0.4}
-            opacity={0.55}
-            color="#7BA7C4"
+            opacity={isRoomDark ? 0 : 0.65}
+            color="#FFE082"
           />
 
           <BirthdayCakeModel candleState={candleState} />
 
           <ContactShadows
-            position={[0, -0.82, 0]}
-            opacity={0.28}
+            position={[0, -0.95, 0]}
+            opacity={isRoomDark ? 0 : 0.28}
             scale={6}
             blur={2.4}
             far={4}
@@ -5190,14 +6112,26 @@ function CelebrationPage({
         </Canvas>
       </div>
 
-      <footer className="relative z-20 pb-16 sm:pb-8 px-4 flex flex-col items-center gap-3 pointer-events-auto">
+      <footer className="relative z-40 pb-16 sm:pb-8 px-4 flex flex-col items-center gap-3.5 pointer-events-auto">
+        {isRoomDark && candleState === "UNLIT" && (
+          <p className="text-xs sm:text-sm font-medium text-[#FFE8A3] tracking-wider animate-pulse text-center">
+            🕯️ Không gian đang chìm trong bóng tối... Hãy chạm để thắp sáng ngọn
+            nến sinh nhật!
+          </p>
+        )}
+
         {candleState === "UNLIT" && (
           <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             <button
               onClick={handleLightCandle}
-              className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs sm:text-sm shadow-[0_10px_28px_rgba(91,137,166,0.38)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+              className={`px-8 sm:px-10 py-4 rounded-2xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-2.5 ${
+                isRoomDark
+                  ? "bg-gradient-to-r from-[#FFD54F] via-[#FFB300] to-[#FF8F00] text-[#1A1200] shadow-[0_0_60px_18px_rgba(255,193,7,0.55)] scale-105 hover:scale-110 ring-4 ring-[#FFE082]/50"
+                  : "bg-[#5B89A6] hover:bg-[#487594] text-white shadow-[0_10px_28px_rgba(91,137,166,0.38)] hover:scale-105"
+              }`}
             >
-              <span>🕯️ Thắp nến sinh nhật</span>
+              <span className="text-base sm:text-lg">🕯️</span>
+              <span>Thắp nến sinh nhật</span>
             </button>
 
             {hasWrittenWishOnce && (
@@ -5211,38 +6145,51 @@ function CelebrationPage({
           </div>
         )}
 
-        {candleState === "LIT" && !showWishModal && (
-          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-            {!hasWrittenWishOnce ? (
-              <button
-                onClick={() => setShowWishModal(true)}
-                className="px-6 sm:px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
-              >
-                ✨ Viết điều ước & Thổi nến
-              </button>
-            ) : (
-              <button
-                onClick={() => triggerRealisticBlowOut(false)}
-                className="px-7 sm:px-8 py-3.5 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2"
-              >
-                <span>🌬️ Thổi nến</span>
-              </button>
-            )}
-
-            {hasWrittenWishOnce && (
-              <button
-                onClick={() => setIsLetterVisible((v) => !v)}
-                className="px-5 sm:px-6 py-3.5 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white text-[#283E52] border border-[#D8E5EE] font-semibold text-xs shadow-sm transition-all cursor-pointer"
-              >
-                {isLetterVisible ? "Ẩn trang sách 📖" : "Mở lại trang sách 💌"}
-              </button>
-            )}
+        {(isRoomIgniting || isRoomSpreading) && (
+          <div className="px-6 py-3 rounded-2xl bg-[#FFF9E6]/95 border border-[#FFD54F] text-xs sm:text-sm font-semibold text-[#8D5B00] shadow-lg">
+            {isRoomIgniting
+              ? "🕯️ Ngọn nến đang từ từ bừng sáng..."
+              : "✨ Ánh sáng từ ngọn nến đang lan tỏa khắp căn phòng..."}
           </div>
         )}
 
+        {candleState === "LIT" &&
+          !isRoomIgniting &&
+          !isRoomSpreading &&
+          !showWishModal && (
+            <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 animate-fadeIn">
+              {!hasWrittenWishOnce ? (
+                <button
+                  onClick={() => setShowWishModal(true)}
+                  className="px-6 sm:px-7 py-3.5 rounded-2xl bg-[#283E52] hover:bg-[#1D2F3F] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer"
+                >
+                  ✨ Viết điều ước & Thổi nến
+                </button>
+              ) : (
+                <button
+                  onClick={() => triggerRealisticBlowOut(false)}
+                  className="px-7 sm:px-8 py-3.5 rounded-2xl bg-[#5B89A6] hover:bg-[#487594] text-white font-semibold text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>🌬️ Thổi nến</span>
+                </button>
+              )}
+
+              {hasWrittenWishOnce && (
+                <button
+                  onClick={() => setIsLetterVisible((v) => !v)}
+                  className="px-5 sm:px-6 py-3.5 rounded-2xl bg-[#FAF8F2]/95 hover:bg-white text-[#283E52] border border-[#D8E5EE] font-semibold text-xs shadow-sm transition-all cursor-pointer"
+                >
+                  {isLetterVisible
+                    ? "Ẩn trang sách 📖"
+                    : "Mở lại trang sách 💌"}
+                </button>
+              )}
+            </div>
+          )}
+
         {candleState === "BLOWING" && (
           <div className="px-5 sm:px-6 py-3 rounded-2xl bg-[#FAF8F2]/90 border border-[#D8E5EE] text-xs font-semibold text-[#487594] shadow-sm animate-pulse">
-            🌬️ Đang thổi tắt ngọn nến...
+            🌬️ Làn gió biển đang thổi tắt ngọn nến...
           </div>
         )}
 
@@ -5266,7 +6213,7 @@ function CelebrationPage({
       </footer>
 
       {showWishModal && !hasWrittenWishOnce && (
-        <div className="fixed inset-0 z-40 bg-[#182633]/35 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-[#182633]/35 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-[#FAF8F2] border border-[#D8E5EE] rounded-3xl max-w-md w-full p-5 sm:p-7 shadow-2xl">
             <div className="text-center mb-4">
               <span className="text-2xl">🕯️✨</span>
@@ -5285,7 +6232,7 @@ function CelebrationPage({
                 value={wishText}
                 onChange={(e) => setWishText(e.target.value)}
                 placeholder="Hãy nhắm mắt và viết điều ước của bạn vào đây..."
-                className="w-full p-3.5 sm:p-4 rounded-2xl bg-white border border-[#D8E5EE] text-base sm:text-sm text-[#283E52] placeholder-[#95ACB8] focus:outline-none focus:border-[#5B89A6] resize-none"
+                className="w-full p-3.5 sm:p-4 rounded-2xl bg-white border-2 border-[#C8DCEB] text-base sm:text-sm text-[#162938] caret-[#162938] placeholder-[#8CA3B3] focus:outline-none focus:border-[#487594] resize-none"
                 required
               />
 
@@ -5323,7 +6270,7 @@ function CelebrationPage({
 }
 
 // ============================================================================
-// COMPONENT GỐC QUẢN LÝ CHUYỂN MÀN HÌNH & LƯU TRẠNG THÁI ĐÃ VIẾT ĐIỀU ƯỚC
+// COMPONENT GỐC QUẢN LÝ CHUYỂN MÀN HÌNH & LƯU TRẠNG THÁI ĐÃ VIẾT ĐIỀU ƯỚC / THẮP NẾN
 // ============================================================================
 export default function App() {
   const [screen, setScreen] = useState<
@@ -5337,6 +6284,8 @@ export default function App() {
   ]);
 
   const [hasWrittenWishOnce, setHasWrittenWishOnce] = useState(false);
+  const [hasDoneFirstLightIntro, setHasDoneFirstLightIntro] = useState(false);
+  const [celebrationMusicStarted, setCelebrationMusicStarted] = useState(false);
   const [candleState, setCandleState] = useState<
     "UNLIT" | "LIT" | "BLOWING" | "BLOWN"
   >("UNLIT");
@@ -5350,7 +6299,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-[#F7F6F0] via-[#ECF3F8] to-[#F3EFE4] text-[#283E52] font-sans-vn antialiased selection:bg-[#CFE2EE] selection:text-[#1D3040] relative overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-[#EAF4FC] via-[#FFF6F9] to-[#F5F2E8] text-[#283E52] font-sans-vn antialiased selection:bg-[#CFE2EE] selection:text-[#1D3040] relative">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,500;0,600;0,700;1,400;1,600&display=swap');
 
@@ -5363,20 +6312,20 @@ export default function App() {
 
         @keyframes floatUp {
           0% {
-            transform: translateY(0) rotate(-1.5deg);
+            transform: translate3d(0, 0, 0) rotate(-1.5deg);
             opacity: 0;
           }
           10% {
             opacity: 0.92;
           }
           50% {
-            transform: translateY(-55vh) rotate(2deg);
+            transform: translate3d(0, -55vh, 0) rotate(2deg);
           }
           90% {
             opacity: 0.92;
           }
           100% {
-            transform: translateY(-125vh) rotate(-1.5deg);
+            transform: translate3d(0, -125vh, 0) rotate(-1.5deg);
             opacity: 0;
           }
         }
@@ -5384,27 +6333,29 @@ export default function App() {
           animation-name: floatUp;
           animation-timing-function: linear;
           animation-iteration-count: infinite;
+          will-change: transform, opacity;
         }
 
         @keyframes floatSparkle {
           0%, 100% {
-            transform: translateY(0px) scale(1);
-            opacity: 0.35;
+            transform: translate3d(0, 0px, 0) scale(1);
+            opacity: 0.55;
           }
           50% {
-            transform: translateY(-16px) scale(1.18);
-            opacity: 0.8;
+            transform: translate3d(0, -14px, 0) scale(1.1);
+            opacity: 0.92;
           }
         }
         .animate-floatSparkle {
           animation-name: floatSparkle;
           animation-timing-function: ease-in-out;
           animation-iteration-count: infinite;
+          will-change: transform, opacity;
         }
 
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.98); }
+          to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
         }
         .animate-fadeIn {
           animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -5412,19 +6363,124 @@ export default function App() {
 
         @keyframes windBlow {
           0% {
-            transform: translateX(-45vw) scaleX(0.4);
+            transform: translate3d(-45vw, 0, 0) scaleX(0.4);
             opacity: 0;
           }
           40% {
             opacity: 0.9;
           }
           100% {
-            transform: translateX(45vw) scaleX(1.3);
+            transform: translate3d(45vw, 0, 0) scaleX(1.3);
             opacity: 0;
           }
         }
         .wind-streak {
           animation: windBlow 1.2s ease-out forwards;
+          will-change: transform, opacity;
+        }
+
+        @keyframes candleFlameGrow {
+          0% {
+            transform: scale3d(0.05, 0.05, 1);
+            opacity: 0;
+          }
+          30% {
+            transform: scale3d(0.55, 0.65, 1);
+            opacity: 0.9;
+          }
+          70% {
+            transform: scale3d(1.1, 1.15, 1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale3d(1, 1, 1);
+            opacity: 1;
+          }
+        }
+        .gpu-candle-flame-grow {
+          animation: candleFlameGrow 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          will-change: transform, opacity;
+        }
+
+        @keyframes candleFlameFade {
+          0% {
+            transform: scale3d(1, 1, 1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale3d(1.25, 1.25, 1);
+            opacity: 0.65;
+          }
+          100% {
+            transform: scale3d(1.5, 1.5, 1);
+            opacity: 0;
+          }
+        }
+        .gpu-candle-flame-fade {
+          animation: candleFlameFade 1.1s ease-out forwards;
+          will-change: transform, opacity;
+        }
+
+        @keyframes candleIgniteHalo {
+          0% {
+            transform: scale3d(0.1, 0.1, 1);
+            opacity: 0;
+          }
+          100% {
+            transform: scale3d(1.15, 1.15, 1);
+            opacity: 0.95;
+          }
+        }
+        .gpu-candle-ignite-halo {
+          background: radial-gradient(circle, rgba(255, 230, 140, 0.9) 0%, rgba(255, 175, 60, 0.45) 45%, rgba(255, 140, 0, 0) 72%);
+          animation: candleIgniteHalo 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          will-change: transform, opacity;
+        }
+
+        .gpu-darkness-ignite {
+          opacity: 0.96;
+          transition: opacity 1.3s ease;
+        }
+
+        @keyframes gpuDarknessFadeOut {
+          0% {
+            opacity: 0.96;
+          }
+          30% {
+            opacity: 0.78;
+          }
+          70% {
+            opacity: 0.25;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
+        .gpu-darkness-fadeout {
+          animation: gpuDarknessFadeOut 2.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          will-change: opacity;
+        }
+
+        @keyframes gpuCandleOrbExpand {
+          0% {
+            transform: scale3d(1.15, 1.15, 1);
+            opacity: 0.95;
+          }
+          55% {
+            transform: scale3d(5.5, 5.5, 1);
+            opacity: 0.85;
+          }
+          100% {
+            transform: scale3d(14, 14, 1);
+            opacity: 0;
+          }
+        }
+        .gpu-candle-glow-orb {
+          background: radial-gradient(circle, rgba(255, 240, 180, 0.96) 0%, rgba(255, 195, 95, 0.58) 40%, rgba(255, 160, 50, 0) 74%);
+          animation: gpuCandleOrbExpand 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          will-change: transform, opacity;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
         }
 
         @keyframes musicBar {
@@ -5443,14 +6499,18 @@ export default function App() {
 
         .book-perspective {
           perspective: 1600px;
+          -webkit-perspective: 1600px;
         }
         .book-cover {
           transform-origin: left center;
+          -webkit-transform-origin: left center;
           transition: transform 1.15s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.9s ease;
           backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
         }
         .book-cover-open {
           transform: rotateY(-165deg);
+          -webkit-transform: rotateY(-165deg);
           opacity: 0;
         }
         .book-lines {
@@ -5475,8 +6535,10 @@ export default function App() {
         showBunting={screen !== "GAMES" && screen !== "PHOTOBOOTH"}
       />
 
-      {/* Bộ phát nhạc tự động đổi theo màn hình: LOGIN tắt nhạc, GAMES phát bản 1, CELEBRATION/PHOTOBOOTH phát bản 2 */}
-      <BackgroundMusicPlayer screen={screen} />
+      <BackgroundMusicPlayer
+        screen={screen}
+        celebrationMusicStarted={celebrationMusicStarted}
+      />
 
       {screen === "LOGIN" && (
         <Login
@@ -5499,6 +6561,9 @@ export default function App() {
           onOpenPhotobooth={() => setScreen("PHOTOBOOTH")}
           hasWrittenWishOnce={hasWrittenWishOnce}
           onMarkWishWritten={() => setHasWrittenWishOnce(true)}
+          hasDoneFirstLightIntro={hasDoneFirstLightIntro}
+          onMarkFirstLightIntroDone={() => setHasDoneFirstLightIntro(true)}
+          onStartCelebrationMusic={() => setCelebrationMusicStarted(true)}
           candleState={candleState}
           setCandleState={setCandleState}
         />
